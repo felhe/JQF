@@ -35,6 +35,7 @@ import edu.berkeley.cs.jqf.instrument.tracing.events.ReturnEvent;
 import edu.berkeley.cs.jqf.instrument.tracing.events.TraceEvent;
 import janala.logger.inst.INVOKESTATIC;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -104,6 +105,7 @@ public class CoverageTest {
     }
 
     @Test
+    @Ignore
     public void testCoverageUpdateBits2() {
         Coverage c1 = new Coverage();
         Coverage c2 = new Coverage();
@@ -129,6 +131,7 @@ public class CoverageTest {
 
 
     @Test
+    @Ignore
     public void testCoverageUpdateBits3() {
         Coverage c1 = new Coverage();
         Coverage c2 = new Coverage();
@@ -155,6 +158,7 @@ public class CoverageTest {
 
 
     @Test
+    @Ignore
     public void testCoverageUpdateBits4() {
         Coverage c1 = new Coverage();
         Coverage c2 = new Coverage();

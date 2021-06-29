@@ -213,6 +213,7 @@
             <plugin>
                 <groupId>edu.berkeley.cs.jqf</groupId>
                 <artifactId>jqf-maven-plugin</artifactId>
+                <version>1.8-SNAPSHOT</version>
             </plugin>
         </plugins>
     </build>
