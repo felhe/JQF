@@ -73,7 +73,7 @@ import static java.lang.Math.log;
  *
  * @author Rohan Padhye
  */
-public class ZestGuidance implements Guidance {
+public class PestGuidance implements Guidance {
 
     /** A pseudo-random number generator for generating fresh values. */
     protected Random random = new Random();
@@ -257,7 +257,7 @@ public class ZestGuidance implements Guidance {
      * @param outputDirectory the directory where fuzzing results will be written
      * @throws IOException if the output directory could not be prepared
      */
-    public ZestGuidance(String testName, Duration duration, File outputDirectory) throws IOException {
+    public PestGuidance(String testName, Duration duration, File outputDirectory) throws IOException {
         this.testName = testName;
         this.maxDurationMillis = duration != null ? duration.toMillis() : Long.MAX_VALUE;
         this.outputDirectory = outputDirectory;
@@ -287,7 +287,7 @@ public class ZestGuidance implements Guidance {
      * @param seedInputFiles one or more input files to be used as initial inputs
      * @throws IOException if the output directory could not be prepared
      */
-    public ZestGuidance(String testName, Duration duration, File outputDirectory, File[] seedInputFiles) throws IOException {
+    public PestGuidance(String testName, Duration duration, File outputDirectory, File[] seedInputFiles) throws IOException {
         this(testName, duration, outputDirectory);
         if (seedInputFiles != null) {
             for (File seedInputFile : seedInputFiles) {
@@ -306,7 +306,7 @@ public class ZestGuidance implements Guidance {
      * @param seedInputDir the directory containing one or more input files to be used as initial inputs
      * @throws IOException if the output directory could not be prepared
      */
-    public ZestGuidance(String testName, Duration duration, File outputDirectory, File seedInputDir) throws IOException {
+    public PestGuidance(String testName, Duration duration, File outputDirectory, File seedInputDir) throws IOException {
         this(testName, duration, outputDirectory, IOUtils.resolveInputFileOrDirectory(seedInputDir));
     }
 

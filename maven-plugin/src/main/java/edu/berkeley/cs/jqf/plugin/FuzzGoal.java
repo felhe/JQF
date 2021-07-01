@@ -40,7 +40,7 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 
 import edu.berkeley.cs.jqf.fuzz.ei.ExecutionIndexingGuidance;
-import edu.berkeley.cs.jqf.fuzz.ei.ZestGuidance;
+import edu.berkeley.cs.jqf.fuzz.ei.PestGuidance;
 import edu.berkeley.cs.jqf.fuzz.guidance.GuidanceException;
 import edu.berkeley.cs.jqf.fuzz.junit.GuidedFuzzing;
 import edu.berkeley.cs.jqf.instrument.InstrumentingClassLoader;
@@ -259,7 +259,7 @@ public class FuzzGoal extends AbstractMojo {
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         ClassLoader loader;
-        ZestGuidance guidance;
+        PestGuidance guidance;
         Log log = getLog();
         PrintStream out = log.isDebugEnabled() ? System.out : null;
         Result result;
@@ -328,7 +328,7 @@ public class FuzzGoal extends AbstractMojo {
         try {
             switch (engine) {
                 case "zest":
-                    guidance = new ZestGuidance(targetName, duration, resultsDir, seedsDir);
+                    guidance = new PestGuidance(targetName, duration, resultsDir, seedsDir);
                     break;
                 case "zeal":
                     System.setProperty("jqf.tracing.TRACE_GENERATORS", "true");

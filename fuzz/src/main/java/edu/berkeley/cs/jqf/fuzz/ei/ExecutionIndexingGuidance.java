@@ -61,7 +61,7 @@ import edu.berkeley.cs.jqf.instrument.tracing.events.TraceEvent;
  *
  * @author Rohan Padhye
  */
-public class ExecutionIndexingGuidance extends ZestGuidance {
+public class ExecutionIndexingGuidance extends PestGuidance {
 
     /** The execution indexing logic. */
     protected ExecutionIndexingState eiState;
@@ -207,7 +207,7 @@ public class ExecutionIndexingGuidance extends ZestGuidance {
     /**
      * Handles the result of a test execution.
      *
-     * This method mostly delegates to the {@link ZestGuidance}, but additionally
+     * This method mostly delegates to the {@link PestGuidance}, but additionally
      * incorporates some custom logic to support minimization
      */
     @Override

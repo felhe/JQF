@@ -61,7 +61,7 @@ public class ExecutionIndexingDriver {
         try {
             // Load the guidance
             String title = testClassName+"#"+testMethodName;
-            ZestGuidance guidance = seedFiles != null ?
+            PestGuidance guidance = seedFiles != null ?
                     new ExecutionIndexingGuidance(title, null, outputDirectory, seedFiles) :
                     new ExecutionIndexingGuidance(title, null, outputDirectory, new File[]{});
 
