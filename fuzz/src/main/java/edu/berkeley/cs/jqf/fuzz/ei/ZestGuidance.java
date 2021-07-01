@@ -418,28 +418,28 @@ public class ZestGuidance implements Guidance {
         int nonZeroValidCount = validCoverage.getNonZeroCount();
         double nonZeroValidFraction = nonZeroValidCount * 100.0 / validCoverage.size();
 
-        if (console != null) {
+        if (true) {
             if (LIBFUZZER_COMPAT_OUTPUT) {
-                console.printf("#%,d\tNEW\tcov: %,d exec/s: %,d L: %,d\n", numTrials, nonZeroValidCount, intervalExecsPerSec, currentInput.size());
+                System.out.printf("#%,d\tNEW\tcov: %,d exec/s: %,d L: %,d\n", numTrials, nonZeroValidCount, intervalExecsPerSec, currentInput.size());
             } else if (!QUIET_MODE) {
-                console.printf("\033[2J");
-                console.printf("\033[H");
-                console.printf(this.getTitle() + "\n");
+                System.out.printf("\033[2J");
+                System.out.printf("\033[H");
+                System.out.printf(this.getTitle() + "\n");
                 if (this.testName != null) {
-                    console.printf("Test name:            %s\n", this.testName);
+                    System.out.printf("Test name:            %s\n", this.testName);
                 }
-                console.printf("Results directory:    %s\n", this.outputDirectory.getAbsolutePath());
-                console.printf("Elapsed time:         %s (%s)\n", millisToDuration(elapsedMilliseconds),
+                System.out.printf("Results directory:    %s\n", this.outputDirectory.getAbsolutePath());
+                System.out.printf("Elapsed time:         %s (%s)\n", millisToDuration(elapsedMilliseconds),
                         maxDurationMillis == Long.MAX_VALUE ? "no time limit" : ("max " + millisToDuration(maxDurationMillis)));
-                console.printf("Number of executions: %,d\n", numTrials);
-                console.printf("Valid inputs:         %,d (%.2f%%)\n", numValid, numValid * 100.0 / numTrials);
-                console.printf("Cycles completed:     %d\n", cyclesCompleted);
-                console.printf("Unique failures:      %,d\n", uniqueFailures.size());
-                console.printf("Queue size:           %,d (%,d favored last cycle)\n", savedInputs.size(), numFavoredLastCycle);
-                console.printf("Current parent input: %s\n", currentParentInputDesc);
-                console.printf("Execution speed:      %,d/sec now | %,d/sec overall\n", intervalExecsPerSec, execsPerSec);
-                console.printf("Total coverage:       %,d branches (%.2f%% of map)\n", nonZeroCount, nonZeroFraction);
-                console.printf("Valid coverage:       %,d branches (%.2f%% of map)\n", nonZeroValidCount, nonZeroValidFraction);
+                System.out.printf("Number of executions: %,d\n", numTrials);
+                System.out.printf("Valid inputs:         %,d (%.2f%%)\n", numValid, numValid * 100.0 / numTrials);
+                System.out.printf("Cycles completed:     %d\n", cyclesCompleted);
+                System.out.printf("Unique failures:      %,d\n", uniqueFailures.size());
+                System.out.printf("Queue size:           %,d (%,d favored last cycle)\n", savedInputs.size(), numFavoredLastCycle);
+                System.out.printf("Current parent input: %s\n", currentParentInputDesc);
+                System.out.printf("Execution speed:      %,d/sec now | %,d/sec overall\n", intervalExecsPerSec, execsPerSec);
+                System.out.printf("Total coverage:       %,d branches (%.2f%% of map)\n", nonZeroCount, nonZeroFraction);
+                System.out.printf("Valid coverage:       %,d branches (%.2f%% of map)\n", nonZeroValidCount, nonZeroValidFraction);
             }
         }
 
