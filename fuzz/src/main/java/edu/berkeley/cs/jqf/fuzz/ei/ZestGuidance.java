@@ -472,7 +472,7 @@ public class ZestGuidance implements Guidance {
 
         // We like inputs that cover many things, so scale with fraction of max
         if (maxCoverage > 0) {
-            target = (NUM_CHILDREN_BASELINE * parentInput.nonZeroCoverage) / maxCoverage;
+            target += (NUM_CHILDREN_MULTIPLIER_FAVORED * parentInput.responsibilities.size()) / maxCoverage;
         }
 
         // We absolutely love favored inputs, so fuzz them more
