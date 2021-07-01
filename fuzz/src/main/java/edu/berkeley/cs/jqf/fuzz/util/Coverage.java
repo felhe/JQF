@@ -183,10 +183,11 @@ public class Coverage implements TraceEventVisitor {
     public boolean updateBits(Coverage that) {
         boolean changed = false;
         if (that.counter.hasNonZeros()) {
-            for (int idx = 0; idx < COVERAGE_MAP_SIZE; idx++) {
+            Collection<Integer> nonZeroIndices = that.counter.getNonZeroIndices();
+            for (int idx : nonZeroIndices) {
                 int before = this.counter.getAtIndex(idx);
-                int after = before | hob(that.counter.getAtIndex(idx));
-                if (after > 0 && (after < before || before == 0)) {
+                int after = that.counter.getAtIndex(idx);
+                if (after > 0 && (after < before || before <= 0)) {
                     this.counter.setAtIndex(idx, after);
                     changed = true;
                 }
