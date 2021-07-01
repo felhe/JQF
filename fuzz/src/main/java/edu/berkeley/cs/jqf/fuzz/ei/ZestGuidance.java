@@ -671,7 +671,7 @@ public class ZestGuidance implements Guidance {
 
                 if (!DISABLE_SAVE_NEW_COUNTS && coverageBitsUpdated) {
                     toSave = true;
-                    why = why + "+count";
+                    why = why + "+reduce";
                 }
 
                 // Save if new total coverage found
@@ -811,8 +811,7 @@ public class ZestGuidance implements Guidance {
                 // (1) strictly smaller total coverage or
                 // (2) same total coverage but strictly larger size
                 if (candidate.nonZeroCoverage < currentNonZeroCoverage ||
-                        (candidate.nonZeroCoverage == currentNonZeroCoverage &&
-                                currentInputSize < candidate.size())) {
+                        (candidate.nonZeroCoverage == currentNonZeroCoverage)) {
 
                     // Check if we can steal all responsibilities from candidate
                     for (Object b : responsibilities) {
