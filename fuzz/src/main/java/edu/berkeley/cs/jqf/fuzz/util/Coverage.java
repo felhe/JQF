@@ -185,6 +185,7 @@ public class Coverage implements TraceEventVisitor {
         if (that.counter.hasNonZeros()) {
             Collection<Integer> nonZeroIndices = that.counter.getNonZeroIndices();
             for (int idx : nonZeroIndices) {
+            	// Compare hit counts w/ existing counter
                 int before = this.counter.getAtIndex(idx);
                 int after = that.counter.getAtIndex(idx);
                 if (after > 0 && (after < before || before <= 0)) {

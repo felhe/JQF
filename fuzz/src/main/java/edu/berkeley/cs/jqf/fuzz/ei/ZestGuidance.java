@@ -471,6 +471,7 @@ public class ZestGuidance implements Guidance {
         int target = NUM_CHILDREN_BASELINE;
 
         // We like inputs that cover many things, so scale with fraction of max
+        // that counts responsibilities
         if (maxCoverage > 0) {
             target += (NUM_CHILDREN_MULTIPLIER_FAVORED * parentInput.responsibilities.size()) / maxCoverage;
         }
