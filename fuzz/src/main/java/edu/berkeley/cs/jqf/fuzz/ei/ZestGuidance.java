@@ -457,7 +457,7 @@ public class ZestGuidance implements Guidance {
             return  "Generator-based random fuzzing (no guidance)\n" +
                     "--------------------------------------------\n";
         } else {
-            return  "Semantic Fuzzing with Zest\n" +
+            return  "Semantic Fuzzing with Pest\n" +
                     "--------------------------\n";
         }
     }
