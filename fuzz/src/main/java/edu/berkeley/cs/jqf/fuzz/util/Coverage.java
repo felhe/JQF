@@ -181,20 +181,33 @@ public class Coverage implements TraceEventVisitor {
      *         of <code>this</code>, causing <code>this</code> to change.
      */
     public boolean updateBits(Coverage that) {
-        boolean changed = false;
+        boolean coverageIncreased = false;
+        boolean slowed = false;
+        boolean reduced = false;
         if (that.counter.hasNonZeros()) {
             Collection<Integer> nonZeroIndices = that.counter.getNonZeroIndices();
             for (int idx : nonZeroIndices) {
-            	// Compare hit counts w/ existing counter
-                int before = this.counter.getAtIndex(idx);
-                int after = that.counter.getAtIndex(idx);
-                if (after > 0 && (after < before || before <= 0)) {
+                int before = hob(this.counter.getAtIndex(idx));
+                int after = hob(that.counter.getAtIndex(idx));
+                // check if we hit new branches
+                if (before == 0) {
                     this.counter.setAtIndex(idx, after);
-                    changed = true;
+                    coverageIncreased = true;
+                }
+                // check if we increased the hit count of a branch (= slowed down)
+                if (before > 1 && before + 16 < after) {
+                    slowed = true;
+                }
+                // check if we decreased the hit count (= sped up)
+                if (before > after && after >= 1) {
+                    this.counter.setAtIndex(idx, after);
+                    reduced = true;
                 }
             }
         }
-        return changed;
+        // only save input if we either hit new branches
+        // or reduced the hit count without increasing it for another branch
+        return coverageIncreased || (reduced && !slowed);
     }
 
     /** Returns a hash code of the edge counts in the coverage map. */
