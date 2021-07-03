@@ -28,9 +28,7 @@
  */
 package edu.berkeley.cs.jqf.fuzz.util;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
+import java.util.*;
 
 import edu.berkeley.cs.jqf.instrument.tracing.events.BranchEvent;
 import edu.berkeley.cs.jqf.instrument.tracing.events.CallEvent;
@@ -184,6 +182,7 @@ public class Coverage implements TraceEventVisitor {
         boolean coverageIncreased = false;
         boolean slowed = false;
         boolean reduced = false;
+        HashMap<Integer, Integer> oldValues = new HashMap<Integer, Integer>();
         if (that.counter.hasNonZeros()) {
             Collection<Integer> nonZeroIndices = that.counter.getNonZeroIndices();
             for (int idx : nonZeroIndices) {
@@ -201,8 +200,14 @@ public class Coverage implements TraceEventVisitor {
                 // check if we decreased the hit count (= sped up)
                 if (before > after && after >= 1) {
                     this.counter.setAtIndex(idx, after);
+                    oldValues.put(idx, before);
                     reduced = true;
                 }
+            }
+        }
+        if (reduced && slowed) {
+            for (Map.Entry<Integer, Integer> entry : oldValues.entrySet()) {
+                this.counter.setAtIndex(entry.getKey(), entry.getValue());
             }
         }
         // only save input if we either hit new branches
