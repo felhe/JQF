@@ -219,10 +219,10 @@ public class PestGuidance implements Guidance {
     protected final boolean GENERATE_EOF_WHEN_OUT = Boolean.getBoolean("jqf.ei.GENERATE_EOF_WHEN_OUT");
 
     /** Baseline number of mutated children to produce from a given parent input. */
-    protected final int NUM_CHILDREN_BASELINE = 50;
+    protected final int NUM_CHILDREN_BASELINE = 10;
 
     /** Multiplication factor for number of children to produce for favored inputs. */
-    protected final int NUM_CHILDREN_MULTIPLIER_FAVORED = 20;
+    protected final int NUM_CHILDREN_MULTIPLIER_FAVORED = 50;
 
     /** Mean number of mutations to perform in each round. */
     protected final double MEAN_MUTATION_COUNT = 8.0;
@@ -465,9 +465,9 @@ public class PestGuidance implements Guidance {
         }
 
         // We absolutely love favored inputs, so fuzz them more
-        if (parentInput.isFavored()) {
-            target = target * NUM_CHILDREN_MULTIPLIER_FAVORED;
-        }
+//        if (parentInput.isFavored()) {
+//            target = target * 2;
+//        }
 
         return target;
     }
