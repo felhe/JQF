@@ -40,19 +40,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.time.Duration;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Date;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -490,6 +478,8 @@ public class PestGuidance implements Guidance {
         cyclesCompleted++;
         infoLog("\n# Cycle " + cyclesCompleted + " completed.");
 
+        purgeQueue();
+
         // Go over all inputs and do a sanity check (plus log)
         infoLog("Here is a list of favored inputs:");
         int sumResponsibilities = 0;
@@ -514,6 +504,42 @@ public class PestGuidance implements Guidance {
 
         // Break log after cycle
         infoLog("\n\n\n");
+    }
+
+    private void purgeQueue() {
+        // sort input by performance
+        savedInputs.sort((first, second) -> {
+            if (first.valid && !second.valid) return -1;
+            if (!first.valid && second.valid) return 1;
+            return first.coverage.performanceScore - second.coverage.performanceScore;
+        });
+        Collection<Integer> coveredBranches = new ArrayList<Integer>(totalCoverage.getCovered());
+        ArrayList<Input> toRemove = new ArrayList<>();
+        for (Input input: savedInputs) {
+            if (!coveredBranches.isEmpty()) {
+                for (Integer b: input.coverage.getCovered()) {
+                    if (coveredBranches.contains(b)) {
+                        Input oldResponsible = responsibleInputs.get(b);
+                        if (oldResponsible != null) {
+                            oldResponsible.responsibilities.remove(b);
+                            // infoLog("-- Stealing responsibility for %s from input %d", b, oldResponsible.id);
+                        } else {
+                            // infoLog("-- Assuming new responsibility for %s", b);
+                        }
+                        // We are now responsible
+                        responsibleInputs.put(b, input);
+                        input.responsibilities.add(b);
+                        coveredBranches.remove(b);
+                    }
+                }
+            }
+            if (input.responsibilities.size() == 0) {
+                toRemove.add(input);
+            }
+        }
+        this.savedInputs.removeAll(toRemove);
+        if (toRemove.size() > 0)
+            System.out.printf("Removed %s subsumed inputs with poor performance\n", toRemove.size());
     }
 
     /**
@@ -650,7 +676,9 @@ public class PestGuidance implements Guidance {
                 // Newly covered branches are always included.
                 // Existing branches *may* be included, depending on the heuristics used.
                 // A valid input will steal responsibility from invalid inputs
-                Set<Object> responsibilities = computeResponsibilities(valid);
+                //Set<Object> responsibilities = computeResponsibilities(valid);
+                Set<Object> responsibilities = new HashSet<>();
+                runCoverage.calculatePerformanceScore();
 
                 // Update total coverage
                 boolean coverageBitsUpdated = totalCoverage.updateBits(runCoverage);
@@ -871,20 +899,20 @@ public class PestGuidance implements Guidance {
         savedInputs.get(currentParentInputIdx).offspring += 1;
 
         // Fourth, assume responsibility for branches
-        currentInput.responsibilities = responsibilities;
-        for (Object b : responsibilities) {
-            // If there is an old input that is responsible,
-            // subsume it
-            Input oldResponsible = responsibleInputs.get(b);
-            if (oldResponsible != null) {
-                oldResponsible.responsibilities.remove(b);
-                // infoLog("-- Stealing responsibility for %s from input %d", b, oldResponsible.id);
-            } else {
-                // infoLog("-- Assuming new responsibility for %s", b);
-            }
-            // We are now responsible
-            responsibleInputs.put(b, currentInput);
-        }
+        currentInput.responsibilities = new HashSet<>();
+//        for (Object b : responsibilities) {
+//            // If there is an old input that is responsible,
+//            // subsume it
+//            Input oldResponsible = responsibleInputs.get(b);
+//            if (oldResponsible != null) {
+//                oldResponsible.responsibilities.remove(b);
+//                // infoLog("-- Stealing responsibility for %s from input %d", b, oldResponsible.id);
+//            } else {
+//                // infoLog("-- Assuming new responsibility for %s", b);
+//            }
+//            // We are now responsible
+//            responsibleInputs.put(b, currentInput);
+//        }
 
     }
 
