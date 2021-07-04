@@ -8,11 +8,19 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import com.pholser.junit.quickcheck.From;
+
 import edu.berkeley.cs.jqf.fuzz.ei.ZestGuidance.Input;
+import edu.berkeley.cs.jqf.fuzz.guidance.GuidanceException;
+import edu.berkeley.cs.jqf.fuzz.guidance.Result;
+import edu.berkeley.cs.jqf.fuzz.util.Coverage;
 
 /**
  * A guidance that performs coverage-guided fuzzing using two coverage maps, one
@@ -212,23 +220,261 @@ public class PestGuidance extends ZestGuidance {
 		if (toRemove.size() > 0)
 			console.printf("Removed %s subsumed inputs with poor performance\n", toRemove.size());
 	}
-	
+
 	// ########## Copied from ZestGuidance
-    private String millisToDuration(long millis) {
-        long seconds = TimeUnit.MILLISECONDS.toSeconds(millis % TimeUnit.MINUTES.toMillis(1));
-        long minutes = TimeUnit.MILLISECONDS.toMinutes(millis % TimeUnit.HOURS.toMillis(1));
-        long hours = TimeUnit.MILLISECONDS.toHours(millis);
-        String result = "";
-        if (hours > 0) {
-            result = hours + "h ";
+	private String millisToDuration(long millis) {
+		long seconds = TimeUnit.MILLISECONDS.toSeconds(millis % TimeUnit.MINUTES.toMillis(1));
+		long minutes = TimeUnit.MILLISECONDS.toMinutes(millis % TimeUnit.HOURS.toMillis(1));
+		long hours = TimeUnit.MILLISECONDS.toHours(millis);
+		String result = "";
+		if (hours > 0) {
+			result = hours + "h ";
+		}
+		if (hours > 0 || minutes > 0) {
+			result += minutes + "m ";
+		}
+		result += seconds + "s";
+		return result;
+	}
+
+	/**
+	 * Overrides result-handling from {@link ZestGuidance} in that responsibilities
+	 * are simply reset on success, and a performance score calculated.
+	 * 
+	 * Also introduces the custom flag `+reduce`.
+	 * 
+	 * Mostly copied {@link From} {@link ZestGuidance}.
+	 */
+	@Override
+	public void handleResult(Result result, Throwable error) throws GuidanceException {
+		conditionallySynchronize(multiThreaded, () -> {
+			// Stop timeout handling
+			this.runStart = null;
+
+			// Increment run count
+			this.numTrials++;
+
+			boolean valid = result == Result.SUCCESS;
+
+			if (valid) {
+				// Increment valid counter
+				numValid++;
+			}
+
+			if (result == Result.SUCCESS || (result == Result.INVALID && SAVE_ONLY_VALID == false)) {
+
+				// Coverage before
+				int nonZeroBefore = totalCoverage.getNonZeroCount();
+				int validNonZeroBefore = validCoverage.getNonZeroCount();
+
+				// Reset responsibilities and calculate performance score
+				// @author
+				Set<Object> responsibilities = new HashSet<>();
+				runCoverage.calculatePerformanceScore();
+
+				// Update total coverage
+				boolean coverageBitsUpdated = totalCoverage.updateBits(runCoverage);
+				if (valid) {
+					validCoverage.updateBits(runCoverage);
+				}
+
+				// Coverage after
+				int nonZeroAfter = totalCoverage.getNonZeroCount();
+				if (nonZeroAfter > maxCoverage) {
+					maxCoverage = nonZeroAfter;
+				}
+				int validNonZeroAfter = validCoverage.getNonZeroCount();
+
+				// Possibly save input
+				boolean toSave = false;
+				String why = "";
+
+				if (!DISABLE_SAVE_NEW_COUNTS && coverageBitsUpdated) {
+					toSave = true;
+					why = why + "+reduce";
+				}
+
+				// Save if new total coverage found
+				if (nonZeroAfter > nonZeroBefore) {
+					// Must be responsible for some branch
+					assert (responsibilities.size() > 0);
+					toSave = true;
+					why = why + "+cov";
+				}
+
+				// Save if new valid coverage is found
+				if (this.validityFuzzing && validNonZeroAfter > validNonZeroBefore) {
+					// Must be responsible for some branch
+					assert (responsibilities.size() > 0);
+					currentInput.valid = true;
+					toSave = true;
+					why = why + "+valid";
+				}
+
+				if (toSave) {
+
+					// Trim input (remove unused keys)
+					currentInput.gc();
+
+					// It must still be non-empty
+					assert (currentInput.size() > 0) : String.format("Empty input: %s", currentInput.desc);
+
+					// libFuzzerCompat stats are only displayed when they hit new coverage
+					if (LIBFUZZER_COMPAT_OUTPUT) {
+						displayStats();
+					}
+
+					infoLog("Saving new input (at run %d): " + "input #%d " + "of size %d; " + "total coverage = %d",
+							numTrials, savedInputs.size(), currentInput.size(), nonZeroAfter);
+
+					// Save input to queue and to disk
+					final String reason = why;
+					GuidanceException.wrap(() -> saveCurrentInput(responsibilities, reason));
+				}
+			} else if (result == Result.FAILURE || result == Result.TIMEOUT) {
+				String msg = error.getMessage();
+
+				// Get the root cause of the failure
+				Throwable rootCause = error;
+				while (rootCause.getCause() != null) {
+					rootCause = rootCause.getCause();
+				}
+
+				// Attempt to add this to the set of unique failures
+				if (uniqueFailures.add(Arrays.asList(rootCause.getStackTrace()))) {
+
+					// Trim input (remove unused keys)
+					currentInput.gc();
+
+					// It must still be non-empty
+					assert (currentInput.size() > 0) : String.format("Empty input: %s", currentInput.desc);
+
+					// Save crash to disk
+					int crashIdx = uniqueFailures.size() - 1;
+					String saveFileName = String.format("id_%06d", crashIdx);
+					File saveFile = new File(savedFailuresDirectory, saveFileName);
+					GuidanceException.wrap(() -> writeCurrentInputToFile(saveFile));
+					infoLog("%s", "Found crash: " + error.getClass() + " - " + (msg != null ? msg : ""));
+					String how = currentInput.desc;
+					String why = result == Result.FAILURE ? "+crash" : "+hang";
+					infoLog("Saved - %s %s %s", saveFile.getPath(), how, why);
+
+					if (EXACT_CRASH_PATH != null && !EXACT_CRASH_PATH.equals("")) {
+						File exactCrashFile = new File(EXACT_CRASH_PATH);
+						GuidanceException.wrap(() -> writeCurrentInputToFile(exactCrashFile));
+					}
+
+					// libFuzzerCompat stats are only displayed when they hit new coverage or
+					// crashes
+					if (LIBFUZZER_COMPAT_OUTPUT) {
+						displayStats();
+					}
+				}
+			}
+
+			// displaying stats on every interval is only enabled for AFL-like stats screen
+			if (!LIBFUZZER_COMPAT_OUTPUT) {
+				displayStats();
+			}
+
+			// Save input unconditionally if such a setting is enabled
+			if (LOG_ALL_INPUTS) {
+				File logDirectory = new File(allInputsDirectory, result.toString().toLowerCase());
+				String saveFileName = String.format("id_%09d", numTrials);
+				File saveFile = new File(logDirectory, saveFileName);
+				GuidanceException.wrap(() -> writeCurrentInputToFile(saveFile));
+			}
+		});
+	}
+
+	// Compute a set of branches for which the current input may assume
+	// responsibility
+	// ##### Copied from ZestGuidance,
+	// changed check against thrashing
+	private Set<Object> computeResponsibilities(boolean valid) {
+		Set<Object> result = new HashSet<>();
+
+		// This input is responsible for all new coverage
+		Collection<?> newCoverage = runCoverage.computeNewCoverage(totalCoverage);
+		if (newCoverage.size() > 0) {
+			result.addAll(newCoverage);
+		}
+
+		// If valid, this input is responsible for all new valid coverage
+		if (valid) {
+			Collection<?> newValidCoverage = runCoverage.computeNewCoverage(validCoverage);
+			if (newValidCoverage.size() > 0) {
+				result.addAll(newValidCoverage);
+			}
+		}
+
+		// Perhaps it can also steal responsibility from other inputs
+		if (STEAL_RESPONSIBILITY) {
+			int currentNonZeroCoverage = runCoverage.getNonZeroCount();
+			int currentInputSize = currentInput.size();
+			Set<?> covered = new HashSet<>(runCoverage.getCovered());
+
+			// Search for a candidate to steal responsibility from
+			candidate_search: for (Input candidate : savedInputs) {
+				Set<?> responsibilities = candidate.responsibilities;
+
+				// Candidates with no responsibility are not interesting
+				if (responsibilities.isEmpty()) {
+					continue candidate_search;
+				}
+
+				// To avoid thrashing, only consider candidates with either
+				// strictly smaller total coverage
+				if (candidate.nonZeroCoverage <= currentNonZeroCoverage) {
+
+					// Check if we can steal all responsibilities from candidate
+					for (Object b : responsibilities) {
+						if (covered.contains(b) == false) {
+							// Cannot steal if this input does not cover something
+							// that the candidate is responsible for
+							continue candidate_search;
+						}
+					}
+					// If all of candidate's responsibilities are covered by the
+					// current input, then it can completely subsume the candidate
+					result.addAll(responsibilities);
+				}
+
+			}
+		}
+
+		return result;
+	}
+	
+	/* Saves an interesting input to the queue. */
+    protected void saveCurrentInput(Set<Object> responsibilities, String why) throws IOException {
+
+        // First, save to disk (note: we issue IDs to everyone, but only write to disk  if valid)
+        int newInputIdx = numSavedInputs++;
+        String saveFileName = String.format("id_%06d", newInputIdx);
+        String how = currentInput.desc;
+        File saveFile = new File(savedCorpusDirectory, saveFileName);
+        writeCurrentInputToFile(saveFile);
+        infoLog("Saved - %s %s %s", saveFile.getPath(), how, why);
+
+        // If not using guidance, do nothing else
+        if (blind) {
+            return;
         }
-        if (hours > 0 || minutes > 0) {
-            result += minutes + "m ";
-        }
-        result += seconds + "s";
-        return result;
+
+        // Second, save to queue
+        savedInputs.add(currentInput);
+
+        // Third, store basic book-keeping data
+        currentInput.id = newInputIdx;
+        currentInput.saveFile = saveFile;
+        currentInput.coverage = new Coverage(runCoverage);
+        currentInput.nonZeroCoverage = runCoverage.getNonZeroCount();
+        currentInput.offspring = 0;
+        savedInputs.get(currentParentInputIdx).offspring += 1;
+
+        // Fourth, neglect resonsibilities
+        currentInput.responsibilities = new HashSet<>();
     }
-
-
 
 }
