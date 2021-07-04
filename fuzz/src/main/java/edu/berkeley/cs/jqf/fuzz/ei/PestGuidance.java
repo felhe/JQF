@@ -7,6 +7,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collection;
+
+import edu.berkeley.cs.jqf.fuzz.ei.ZestGuidance.Input;
 
 /**
  * A guidance that performs coverage-guided fuzzing using two coverage maps,
@@ -62,7 +66,8 @@ public class PestGuidance extends ZestGuidance {
 	}
 	
     /* Returns the banner to be displayed on the status screen */
-    protected String getTitle() {
+    @Override
+	protected String getTitle() {
         if (blind) {
             return  "Generator-based random fuzzing (no guidance)\n" +
                     "--------------------------------------------\n";
@@ -72,6 +77,63 @@ public class PestGuidance extends ZestGuidance {
                     "--------------------------\n";
         }
     }
+    
+    private int getTargetChildrenForParent(Input parentInput) {
+        // Baseline is a constant
+        int target = NUM_CHILDREN_BASELINE;
 
+        // We like inputs that cover many things, so scale with fraction of max that counts responsibilities
+        if (maxCoverage > 0) {
+        	target += (NUM_CHILDREN_MULTIPLIER_FAVORED * parentInput.responsibilities.size()) / maxCoverage;
+        }
+
+        return target;
+    }
+
+
+    /**
+     * Purges the queue before completing the fuzzing cycle
+     */
+    @Override
+    protected void completeCycle() {
+    	purgeQueue();
+    	super.completeCycle();
+    }
+
+    private void purgeQueue() {
+        // sort input by performance
+        savedInputs.sort((first, second) -> {
+            if (first.valid && !second.valid) return -1;
+            if (!first.valid && second.valid) return 1;
+            return first.coverage.performanceScore - second.coverage.performanceScore;
+        });
+        Collection<Integer> coveredBranches = new ArrayList<Integer>(totalCoverage.getCovered());
+        ArrayList<Input> toRemove = new ArrayList<>();
+        for (Input input: savedInputs) {
+            if (!coveredBranches.isEmpty()) {
+                for (Integer b: input.coverage.getCovered()) {
+                    if (coveredBranches.contains(b)) {
+                        Input oldResponsible = responsibleInputs.get(b);
+                        if (oldResponsible != null) {
+                            oldResponsible.responsibilities.remove(b);
+                            // infoLog("-- Stealing responsibility for %s from input %d", b, oldResponsible.id);
+                        } else {
+                            // infoLog("-- Assuming new responsibility for %s", b);
+                        }
+                        // We are now responsible
+                        responsibleInputs.put(b, input);
+                        input.responsibilities.add(b);
+                        coveredBranches.remove(b);
+                    }
+                }
+            }
+            if (input.responsibilities.size() == 0) {
+                toRemove.add(input);
+            }
+        }
+        this.savedInputs.removeAll(toRemove);
+        if (toRemove.size() > 0)
+            console.printf("Removed %s subsumed inputs with poor performance\n", toRemove.size());
+    }
 
 }
