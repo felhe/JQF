@@ -48,6 +48,8 @@ public class Coverage implements TraceEventVisitor {
     /** The coverage counts for each edge. */
     private final Counter counter = new NonZeroCachingCounter(COVERAGE_MAP_SIZE);
 
+    public int performanceScore = 0;
+
     /** Creates a new coverage map. */
     public Coverage() {
 
@@ -62,6 +64,7 @@ public class Coverage implements TraceEventVisitor {
         for (int idx = 0; idx < COVERAGE_MAP_SIZE; idx++) {
             this.counter.setAtIndex(idx, that.counter.getAtIndex(idx));
         }
+        this.performanceScore = that.performanceScore;
     }
 
     /**
@@ -127,7 +130,14 @@ public class Coverage implements TraceEventVisitor {
             }
         }
         return newCoverage;
+    }
 
+    public void calculatePerformanceScore() {
+        int hitCountSum = 0;
+        for (int idx : this.counter.getNonZeroIndices()) {
+            hitCountSum += this.counter.getAtIndex(idx);
+        }
+        this.performanceScore = 100*hitCountSum / this.counter.getNonZeroSize();
     }
 
     /**
