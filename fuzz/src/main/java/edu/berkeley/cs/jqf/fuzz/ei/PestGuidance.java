@@ -3,6 +3,10 @@
  */
 package edu.berkeley.cs.jqf.fuzz.ei;
 
+import edu.berkeley.cs.jqf.fuzz.guidance.GuidanceException;
+import edu.berkeley.cs.jqf.fuzz.guidance.Result;
+import edu.berkeley.cs.jqf.fuzz.util.Coverage;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -12,9 +16,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
-import edu.berkeley.cs.jqf.fuzz.guidance.GuidanceException;
-import edu.berkeley.cs.jqf.fuzz.guidance.Result;
-import edu.berkeley.cs.jqf.fuzz.util.Coverage;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A guidance that performs coverage-guided fuzzing using two coverage maps, one
@@ -26,13 +29,18 @@ import edu.berkeley.cs.jqf.fuzz.util.Coverage;
  */
 public class PestGuidance extends ZestGuidance {
 
+	protected ArrayList<Input<?>> potentialInputs = new ArrayList<>();
+
 	/** Baseline number of mutated children to produce from a given parent input. */
-	protected final int NUM_CHILDREN_BASELINE = 10;
+	protected final int NUM_CHILDREN_PER_CYCLE = 500;
 
 	/**
 	 * Multiplication factor for number of children to produce for favored inputs.
 	 */
 	protected final int NUM_CHILDREN_MULTIPLIER_FAVORED = 50;
+
+	/** Number of favored inputs in the last cycle. */
+	protected int numPotentialInputsLastCycle = 0;
 
 	/**
 	 * Overriding the console used in ZestGuidance, TODO Check if this can be
@@ -48,6 +56,7 @@ public class PestGuidance extends ZestGuidance {
 	 */
 	public PestGuidance(String testName, Duration duration, File outputDirectory) throws IOException {
 		super(testName, duration, outputDirectory);
+		this.currentParentInputIdx = -1;
 	}
 
 	/**
@@ -60,6 +69,7 @@ public class PestGuidance extends ZestGuidance {
 	public PestGuidance(String testName, Duration duration, File outputDirectory, File[] seedInputFiles)
 			throws IOException {
 		super(testName, duration, outputDirectory, seedInputFiles);
+		this.currentParentInputIdx = -1;
 	}
 
 	/**
@@ -72,6 +82,7 @@ public class PestGuidance extends ZestGuidance {
 	public PestGuidance(String testName, Duration duration, File outputDirectory, File seedInputDir)
 			throws IOException {
 		super(testName, duration, outputDirectory, seedInputDir);
+		this.currentParentInputIdx = -1;
 	}
 
 	/* Returns the banner to be displayed on the status screen */
@@ -87,12 +98,12 @@ public class PestGuidance extends ZestGuidance {
 	@Override
 	protected int getTargetChildrenForParent(Input<?> parentInput) {
 		// Baseline is a constant
-		int target = NUM_CHILDREN_BASELINE;
+		int target = NUM_CHILDREN_PER_CYCLE / savedInputs.size();
 
-		// We like inputs that cover many things, so scale with fraction of max that
-		// counts responsibilities
+		// We like inputs that cover many things, so scale with fraction of max
+		// that counts responsibilities
 		if (maxCoverage > 0) {
-			target += (NUM_CHILDREN_MULTIPLIER_FAVORED * parentInput.responsibilities.size()) / maxCoverage;
+			target += (NUM_CHILDREN_MULTIPLIER_FAVORED * parentInput.nonZeroCoverage) / maxCoverage;
 		}
 
 		return target;
@@ -103,14 +114,100 @@ public class PestGuidance extends ZestGuidance {
 	 */
 	@Override
 	protected void completeCycle() {
-		purgeQueue();
-		super.completeCycle();
+		int removed = purgeQueue();
+		// Increment cycle count
+		cyclesCompleted++;
+		infoLog("\n# Cycle " + cyclesCompleted + " completed.");
+
+		// Go over all inputs and do a sanity check (plus log)
+		infoLog("Here is a list of favored inputs:");
+		int sumResponsibilities = 0;
+		for (Input input : savedInputs) {
+			if (input.isFavored()) {
+				int responsibleFor = input.responsibilities.size();
+				infoLog("Input %d is responsible for %d branches", input.id, responsibleFor);
+				sumResponsibilities += responsibleFor;
+			}
+		}
+		int totalCoverageCount = totalCoverage.getNonZeroCount();
+		infoLog("Total %d branches covered", totalCoverageCount);
 	}
 
-	private void purgeQueue() {
-		infoLog("Purging input queue.");
+	// ########## Copied from ZestGuidance
+	// Call only if console exists
+	protected void displayStats() {
+		Date now = new Date();
+		long intervalMilliseconds = now.getTime() - lastRefreshTime.getTime();
+		if (intervalMilliseconds < STATS_REFRESH_TIME_PERIOD) {
+			return;
+		}
+		long interlvalTrials = numTrials - lastNumTrials;
+		long intervalExecsPerSec = interlvalTrials * 1000L / intervalMilliseconds;
+		double intervalExecsPerSecDouble = interlvalTrials * 1000.0 / intervalMilliseconds;
+		lastRefreshTime = now;
+		lastNumTrials = numTrials;
+		long elapsedMilliseconds = now.getTime() - startTime.getTime();
+		long execsPerSec = numTrials * 1000L / elapsedMilliseconds;
+
+		String currentParentInputDesc;
+		if (seedInputs.size() > 0 || savedInputs.isEmpty()) {
+			currentParentInputDesc = "<seed>";
+		} else {
+			Input<?> currentParentInput = savedInputs.get(currentParentInputIdx);
+			currentParentInputDesc = currentParentInputIdx + " ";
+			currentParentInputDesc += currentParentInput.isFavored() ? "(favored)" : "(not favored)";
+			currentParentInputDesc += " {" + numChildrenGeneratedForCurrentParentInput + "/"
+					+ getTargetChildrenForParent(currentParentInput) + " mutations}";
+		}
+
+		int nonZeroCount = totalCoverage.getNonZeroCount();
+		double nonZeroFraction = nonZeroCount * 100.0 / totalCoverage.size();
+		int nonZeroValidCount = validCoverage.getNonZeroCount();
+		double nonZeroValidFraction = nonZeroValidCount * 100.0 / validCoverage.size();
+
+		if (console != null) {
+			if (LIBFUZZER_COMPAT_OUTPUT) {
+				console.printf("#%,d\tNEW\tcov: %,d exec/s: %,d L: %,d\n", numTrials, nonZeroValidCount,
+						intervalExecsPerSec, currentInput.size());
+			} else if (!QUIET_MODE) {
+				console.printf("\033[2J");
+				console.printf("\033[H");
+				console.printf(this.getTitle() + "\n");
+				if (this.testName != null) {
+					console.printf("Test name:            %s\n", this.testName);
+				}
+				console.printf("Results directory:    %s\n", this.outputDirectory.getAbsolutePath());
+				console.printf("Elapsed time:         %s (%s)\n", millisToDuration(elapsedMilliseconds),
+						maxDurationMillis == Long.MAX_VALUE ? "no time limit"
+								: ("max " + millisToDuration(maxDurationMillis)));
+				console.printf("Number of executions: %,d\n", numTrials);
+				console.printf("Valid inputs:         %,d (%.2f%%)\n", numValid, numValid * 100.0 / numTrials);
+				console.printf("Cycles completed:     %d\n", cyclesCompleted);
+				console.printf("Unique failures:      %,d\n", uniqueFailures.size());
+				console.printf("Queue size:           %,d (%,d potential last cycle)\n", savedInputs.size(),
+						numPotentialInputsLastCycle);
+				console.printf("Current parent input: %s\n", currentParentInputDesc);
+				console.printf("Execution speed:      %,d/sec now | %,d/sec overall\n", intervalExecsPerSec,
+						execsPerSec);
+				console.printf("Total coverage:       %,d branches (%.2f%% of map)\n", nonZeroCount, nonZeroFraction);
+				console.printf("Valid coverage:       %,d branches (%.2f%% of map)\n", nonZeroValidCount,
+						nonZeroValidFraction);
+			}
+		}
+
+		String plotData = String.format("%d, %d, %d, %d, %d, %d, %.2f%%, %d, %d, %d, %.2f, %d, %d, %.2f%%",
+				TimeUnit.MILLISECONDS.toSeconds(now.getTime()), cyclesCompleted, currentParentInputIdx, numSavedInputs,
+				0, 0, nonZeroFraction, uniqueFailures.size(), 0, 0, intervalExecsPerSecDouble, numValid,
+				numTrials - numValid, nonZeroValidFraction);
+		appendLineToFile(statsFile, plotData);
+
+	}
+
+	private int purgeQueue() {
+		this.numPotentialInputsLastCycle = this.potentialInputs.size();
 		// sort input by performance
-		savedInputs.sort((first, second) -> {
+		potentialInputs.addAll(savedInputs);
+		potentialInputs.sort((first, second) -> {
 			if (first.valid && !second.valid)
 				return -1;
 			if (!first.valid && second.valid)
@@ -119,7 +216,7 @@ public class PestGuidance extends ZestGuidance {
 		});
 		Collection<Integer> coveredBranches = new ArrayList<Integer>(totalCoverage.getCovered());
 		ArrayList<Input<?>> toRemove = new ArrayList<>();
-		for (Input<?> input : savedInputs) {
+		for (Input<?> input : potentialInputs) {
 			if (!coveredBranches.isEmpty()) {
 				for (Integer b : input.coverage.getCovered()) {
 					if (coveredBranches.contains(b)) {
@@ -138,9 +235,12 @@ public class PestGuidance extends ZestGuidance {
 				toRemove.add(input);
 			}
 		}
-		this.savedInputs.removeAll(toRemove);
+		this.potentialInputs.removeAll(toRemove);
+		this.savedInputs = new ArrayList<>(potentialInputs);
+		this.potentialInputs.clear();
 		if (toRemove.size() > 0)
-			console.printf("Removed %s subsumed inputs with poor performance\n", toRemove.size());
+			console.printf("Removed %s subsumed inputs with poor performance out of %s potential inputs\n", toRemove.size(), numPotentialInputsLastCycle);
+		return toRemove.size();
 	}
 
 	/**
@@ -317,8 +417,12 @@ public class PestGuidance extends ZestGuidance {
             return;
         }
 
-        // Second, save to queue
-        savedInputs.add(currentInput);
+		if (currentParentInputIdx == -1) {
+			savedInputs.add(currentInput);
+			currentParentInputIdx = 0;
+		}
+		// Second, save to queue
+		potentialInputs.add(currentInput);
 
         // Third, store basic book-keeping data
         currentInput.id = newInputIdx;
