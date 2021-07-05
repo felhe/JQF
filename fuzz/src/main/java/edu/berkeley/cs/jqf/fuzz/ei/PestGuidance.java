@@ -29,10 +29,11 @@ import java.util.concurrent.TimeUnit;
  */
 public class PestGuidance extends ZestGuidance {
 
+	/** Set of interesting inputs which reduced hit counts for some branches in the current fuzzing cycle. */
 	protected ArrayList<Input<?>> potentialInputs = new ArrayList<>();
 
-	/** Baseline number of mutated children to produce from a given parent input. */
-	protected final int NUM_CHILDREN_PER_CYCLE = 500;
+	/** Minimal number of mutated children to produce per fuzzing cycle. */
+	protected final int NUM_CHILDREN_PER_CYCLE = 1000;
 
 	/**
 	 * Multiplication factor for number of children to produce for favored inputs.
@@ -110,7 +111,7 @@ public class PestGuidance extends ZestGuidance {
 	}
 
 	/**
-	 * Purges the queue before completing the fuzzing cycle
+	 * Purges the queue before completing the fuzzing cycle.
 	 */
 	@Override
 	protected void completeCycle() {
@@ -121,12 +122,10 @@ public class PestGuidance extends ZestGuidance {
 
 		// Go over all inputs and do a sanity check (plus log)
 		infoLog("Here is a list of favored inputs:");
-		int sumResponsibilities = 0;
-		for (Input input : savedInputs) {
+		for (Input<?> input : savedInputs) {
 			if (input.isFavored()) {
 				int responsibleFor = input.responsibilities.size();
 				infoLog("Input %d is responsible for %d branches", input.id, responsibleFor);
-				sumResponsibilities += responsibleFor;
 			}
 		}
 		int totalCoverageCount = totalCoverage.getNonZeroCount();
@@ -203,10 +202,18 @@ public class PestGuidance extends ZestGuidance {
 
 	}
 
+	/**
+	 * Merges potentialInputs with savedInputs and calculates responsibilities based on performance
+	 * to build a minimal set of high performing inputs.
+	 * @return amount of inputs that have been removed from both lists
+	 */
 	private int purgeQueue() {
 		this.numPotentialInputsLastCycle = this.potentialInputs.size();
-		// sort input by performance
+
+		// merge new potential inputs with existing saved inputs
 		potentialInputs.addAll(savedInputs);
+
+		// sort input by performance, valid inputs always preferred
 		potentialInputs.sort((first, second) -> {
 			if (first.valid && !second.valid)
 				return -1;
@@ -214,32 +221,43 @@ public class PestGuidance extends ZestGuidance {
 				return 1;
 			return first.coverage.performanceScore - second.coverage.performanceScore;
 		});
-		Collection<Integer> coveredBranches = new ArrayList<Integer>(totalCoverage.getCovered());
+
+		// set of all branches
+		Collection<Integer> coveredBranchesLeft = new ArrayList<>(totalCoverage.getCovered());
 		ArrayList<Input<?>> toRemove = new ArrayList<>();
+
 		for (Input<?> input : potentialInputs) {
-			if (!coveredBranches.isEmpty()) {
+			// continue searching as long as there are still branches left with no responsible inputs
+			if (!coveredBranchesLeft.isEmpty()) {
 				for (Integer b : input.coverage.getCovered()) {
-					if (coveredBranches.contains(b)) {
+					if (coveredBranchesLeft.contains(b)) {
 						Input<?> oldResponsible = responsibleInputs.get(b);
 						if (oldResponsible != null) {
 							oldResponsible.responsibilities.remove(b);
 						}
-						// We are now responsible
+						// we are now responsible
 						responsibleInputs.put(b, input);
 						input.responsibilities.add(b);
-						coveredBranches.remove(b);
+
+						// this branch is done, remove it from list
+						coveredBranchesLeft.remove(b);
 					}
 				}
 			}
+			// if this input has no responsibilities left because of poor performance, remove it
 			if (input.responsibilities.size() == 0) {
 				toRemove.add(input);
 			}
 		}
+
+		// save remaining inputs for fuzzing and clear list for new cycle
 		this.potentialInputs.removeAll(toRemove);
 		this.savedInputs = new ArrayList<>(potentialInputs);
 		this.potentialInputs.clear();
+
 		if (toRemove.size() > 0)
 			console.printf("Removed %s subsumed inputs with poor performance out of %s potential inputs\n", toRemove.size(), numPotentialInputsLastCycle);
+
 		return toRemove.size();
 	}
 
@@ -310,16 +328,12 @@ public class PestGuidance extends ZestGuidance {
 
 				// Save if new total coverage found
 				if (nonZeroAfter > nonZeroBefore) {
-					// Must be responsible for some branch
-					assert (responsibilities.size() > 0);
 					toSave = true;
 					why = why + "+cov";
 				}
 
 				// Save if new valid coverage is found
 				if (this.validityFuzzing && validNonZeroAfter > validNonZeroBefore) {
-					// Must be responsible for some branch
-					assert (responsibilities.size() > 0);
 					currentInput.valid = true;
 					toSave = true;
 					why = why + "+valid";
@@ -417,6 +431,7 @@ public class PestGuidance extends ZestGuidance {
             return;
         }
 
+        // parent index is -1 for the first random input
 		if (currentParentInputIdx == -1) {
 			savedInputs.add(currentInput);
 			currentParentInputIdx = 0;
