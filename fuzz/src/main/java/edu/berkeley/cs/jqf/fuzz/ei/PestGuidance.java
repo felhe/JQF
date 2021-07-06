@@ -253,8 +253,13 @@ public class PestGuidance extends ZestGuidance {
 			}
             else {
                 if (potentialIds.contains(input.id)) {
-                	writeCurrentInputToFile(input.saveFile);
-					String how = input.desc;
+                	try {
+						writeCurrentInputToFile(input.saveFile);
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					/*String how = input.desc;
 					int size = potentialIds.size();
 					for(int i = 0; i < size ; i++) {
 						if (potentialIds.get(i)== input.id){
@@ -262,10 +267,9 @@ public class PestGuidance extends ZestGuidance {
 							break;	
 						}
 					}
-					infoLog("Saved - %s %s %s", input.saveFile.getPath(), how, why);
+					infoLog("Saved - %s %s %s", input.saveFile.getPath(), how, why);*/
                 }
             }
-
 		}
 
 		// save remaining inputs for fuzzing and clear list for new cycle
@@ -513,7 +517,7 @@ public class PestGuidance extends ZestGuidance {
         //potentialSaveFiles.add(saveFile);
         potentialIds.add(newInputIdx);
         potentialWhy.add(why);
-        //infoLog("Saved - %s %s %s", saveFile.getPath(), how, why);
+        infoLog("Saved - %s %s %s", saveFile.getPath(), how, why);
 
         // If not using guidance, do nothing else
         if (blind) {
