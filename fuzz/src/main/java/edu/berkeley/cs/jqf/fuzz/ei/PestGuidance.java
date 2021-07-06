@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.time.Duration;
 import java.util.*;
+import java.util.stream.*;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -27,6 +28,12 @@ public class PestGuidance extends ZestGuidance {
 
 	/** Set of interesting inputs which reduced hit counts for some branches in the current fuzzing cycle. */
 	protected ArrayList<Input> potentialInputs = new ArrayList<>();
+
+	/** Set of Whystrings from interesting inputs which reduced hit counts for some branches in the current fuzzing cycle. */
+    protected ArrayList<String> potentialWhy = new ArrayList<>();
+   
+    /** Set of Ids from interesting inputs which reduced hit counts for some branches in the current fuzzing cycle. */
+    protected List<Integer> potentialIds = new ArrayList<>();
 
 	/** Minimal number of mutated children to produce per fuzzing cycle. */
 	protected final int NUM_CHILDREN_PER_CYCLE = 1000;
@@ -240,16 +247,33 @@ public class PestGuidance extends ZestGuidance {
 					}
 				}
 			}
-			// if this input has no responsibilities left because of poor performance, remove it
+			// if this input has no responsibilities left because of poor performance, remove it, then safe Inputs to disk
 			if (input.responsibilities.size() == 0) {
 				toRemove.add(input);
 			}
+            else {
+                if (potentialIds.contains(input.id)) {
+                	writeCurrentInputToFile(input.saveFile);
+					String how = input.desc;
+					int size = potentialIds.size();
+					for(int i = 0; i < size ; i++) {
+						if (potentialIds.get(i)== input.id){
+							String why = potentialWhy.get(i);
+							break;	
+						}
+					}
+					infoLog("Saved - %s %s %s", input.saveFile.getPath(), how, why);
+                }
+            }
+
 		}
 
 		// save remaining inputs for fuzzing and clear list for new cycle
 		this.potentialInputs.removeAll(toRemove);
 		this.savedInputs = new ArrayList<>(potentialInputs);
 		this.potentialInputs.clear();
+        this.potentialIds.clear();
+		this.potentialWhy.clear();
 
 		if (toRemove.size() > 0)
 			console.printf("Removed %s subsumed inputs with poor performance out of %s potential inputs\n", toRemove.size(), numPotentialInputsLastCycle);
@@ -481,13 +505,15 @@ public class PestGuidance extends ZestGuidance {
 	/* Saves an interesting input to the queue. */
     protected void saveCurrentInput(Set<Object> responsibilities, String why) throws IOException {
 
-        // First, save to disk (note: we issue IDs to everyone, but only write to disk  if valid)
+        // First, add to a list of SaveFiles then add it to Harddrive in Completecycle
         int newInputIdx = numSavedInputs++;
         String saveFileName = String.format("id_%06d", newInputIdx);
         String how = currentInput.desc;
         File saveFile = new File(savedCorpusDirectory, saveFileName);
-        writeCurrentInputToFile(saveFile);
-        infoLog("Saved - %s %s %s", saveFile.getPath(), how, why);
+        //potentialSaveFiles.add(saveFile);
+        potentialIds.add(newInputIdx);
+        potentialWhy.add(why);
+        //infoLog("Saved - %s %s %s", saveFile.getPath(), how, why);
 
         // If not using guidance, do nothing else
         if (blind) {
