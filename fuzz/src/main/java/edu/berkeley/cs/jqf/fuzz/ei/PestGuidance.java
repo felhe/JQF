@@ -28,8 +28,6 @@ public class PestGuidance extends ZestGuidance {
 	/** Set of interesting inputs which reduced hit counts for some branches in the current fuzzing cycle. */
 	protected ArrayList<Input> potentialInputs = new ArrayList<>();
 
-
-
 	/** Minimal number of mutated children to produce per fuzzing cycle. */
 	protected final int NUM_CHILDREN_PER_CYCLE = 1000;
 
@@ -374,7 +372,7 @@ public class PestGuidance extends ZestGuidance {
 					}
 
 					infoLog("Saving new input (at run %d): " + "input #%d " + "of size %d; " + "total coverage = %d",
-							numTrials, savedInputs.size(), currentInput.size(), nonZeroAfter);
+							numTrials, numSavedInputs, currentInput.size(), nonZeroAfter);
 
 					// Save input to queue and to disk
 					final String reason = why;
