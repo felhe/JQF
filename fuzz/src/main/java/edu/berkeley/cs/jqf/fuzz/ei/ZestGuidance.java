@@ -967,6 +967,22 @@ public class ZestGuidance implements Guidance {
          * operations.</p>
          */
         String desc;
+        
+        /**
+         * The description for this input.
+         *
+         * <p>This field is modified by the construction and mutation
+         * operations.</p>
+         */
+        String why;
+        
+        /**
+         * A boolean that states if a input is Saved
+         *
+         * <p>This field is modified by the construction and mutation
+         * operations.</p>
+         */
+        boolean isSaved;
 
         /**
          * The run coverage for this input, if the input is saved.
