@@ -262,11 +262,10 @@ public class PestGuidance extends ZestGuidance {
 					int size = potentialIds.size();
 					for(int i = 0; i < size ; i++) {
 						if (potentialIds.get(i)== input.id){
-							String why = potentialWhy.get(i);
+							infoLog("Saved - %s %s %s", input.saveFile.getPath(), how, potentialWhy.get(i));
 							break;	
 						}
-					}
-					infoLog("Saved - %s %s %s", input.saveFile.getPath(), how, why);
+					}	
                 }
             }
 		}
