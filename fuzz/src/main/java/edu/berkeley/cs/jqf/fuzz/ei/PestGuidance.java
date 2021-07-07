@@ -8,9 +8,7 @@ import edu.berkeley.cs.jqf.fuzz.guidance.GuidanceException;
 import edu.berkeley.cs.jqf.fuzz.guidance.Result;
 import edu.berkeley.cs.jqf.fuzz.util.Coverage;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintStream;
+import java.io.*;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -246,9 +244,9 @@ public class PestGuidance extends ZestGuidance {
 			// TODO if already safed delete from harddrive 
 			}
             else {
-                if (input.isSaved==false) {
+                if (!input.isSaved) {
                 	try {
-						writeCurrentInputToFile(input.saveFile);
+						writeInputToFile((Input<Integer>) input);
 						input.isSaved=true;
 					} catch (IOException e) {
 						// TODO Auto-generated catch block
@@ -525,4 +523,15 @@ public class PestGuidance extends ZestGuidance {
         // Fourth, neglect resonsibilities
         currentInput.responsibilities = new HashSet<>();
     }
+
+	protected void writeInputToFile(Input<Integer> inputToSave) throws IOException {
+		File saveFile = inputToSave.saveFile;
+		try (BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(saveFile))) {
+			for (Integer b : inputToSave) {
+				assert (b >= 0 && b < 256);
+				out.write(b);
+			}
+		}
+	}
+
 }
