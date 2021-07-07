@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.time.Duration;
 import java.util.*;
-import java.util.stream.*;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -259,7 +258,7 @@ public class PestGuidance extends ZestGuidance {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}
-					/*String how = input.desc;
+					String how = input.desc;
 					int size = potentialIds.size();
 					for(int i = 0; i < size ; i++) {
 						if (potentialIds.get(i)== input.id){
@@ -267,7 +266,7 @@ public class PestGuidance extends ZestGuidance {
 							break;	
 						}
 					}
-					infoLog("Saved - %s %s %s", input.saveFile.getPath(), how, why);*/
+					infoLog("Saved - %s %s %s", input.saveFile.getPath(), how, why);
                 }
             }
 		}
@@ -514,10 +513,9 @@ public class PestGuidance extends ZestGuidance {
         String saveFileName = String.format("id_%06d", newInputIdx);
         String how = currentInput.desc;
         File saveFile = new File(savedCorpusDirectory, saveFileName);
-        //potentialSaveFiles.add(saveFile);
         potentialIds.add(newInputIdx);
         potentialWhy.add(why);
-        infoLog("Saved - %s %s %s", saveFile.getPath(), how, why);
+        //infoLog("Saved - %s %s %s", saveFile.getPath(), how, why);
 
         // If not using guidance, do nothing else
         if (blind) {
