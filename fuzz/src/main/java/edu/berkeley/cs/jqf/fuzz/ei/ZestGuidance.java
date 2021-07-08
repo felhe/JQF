@@ -313,7 +313,7 @@ public class ZestGuidance implements Guidance {
 
 
 
-    private void prepareOutputDirectory() throws IOException {
+    protected void prepareOutputDirectory() throws IOException {
         // Create the output directory if it does not exist
         IOUtils.createDirectory(outputDirectory);
 

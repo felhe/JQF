@@ -10,6 +10,7 @@ import com.pholser.junit.quickcheck.From;
 import edu.berkeley.cs.jqf.fuzz.guidance.GuidanceException;
 import edu.berkeley.cs.jqf.fuzz.guidance.Result;
 import edu.berkeley.cs.jqf.fuzz.util.Coverage;
+import edu.berkeley.cs.jqf.fuzz.util.IOUtils;
 
 import java.io.*;
 import java.time.Duration;
@@ -96,7 +97,7 @@ public class PestGuidance extends ZestGuidance {
 
 
 	@Override
-    private void prepareOutputDirectory() throws IOException {
+    protected void prepareOutputDirectory() throws IOException {
         // Create the output directory if it does not exist
         IOUtils.createDirectory(outputDirectory);
 
