@@ -38,6 +38,10 @@ public class PestGuidance extends ZestGuidance {
 	**/
 	protected int last_queue_size;
 
+	/** The file where Visualize data is written. (after every completed Cycle) */
+	protected File vizFile;
+
+
 	/**
 	 * Multiplication factor for number of children to produce for favored inputs.
 	 */
@@ -88,6 +92,51 @@ public class PestGuidance extends ZestGuidance {
 		super(testName, duration, outputDirectory, seedInputDir);
 		this.currentParentInputIdx = -1;
 	}
+
+
+
+	@Override
+    private void prepareOutputDirectory() throws IOException {
+        // Create the output directory if it does not exist
+        IOUtils.createDirectory(outputDirectory);
+
+        // Name files and directories after AFL
+        this.savedCorpusDirectory = IOUtils.createDirectory(outputDirectory, "corpus");
+        this.savedFailuresDirectory = IOUtils.createDirectory(outputDirectory, "failures");
+        if (LOG_ALL_INPUTS) {
+            this.allInputsDirectory = IOUtils.createDirectory(outputDirectory, "all");
+            IOUtils.createDirectory(allInputsDirectory, "success");
+            IOUtils.createDirectory(allInputsDirectory, "invalid");
+            IOUtils.createDirectory(allInputsDirectory, "failure");
+        }
+        this.statsFile = new File(outputDirectory, "plot_data");
+        this.logFile = new File(outputDirectory, "fuzz.log");
+        this.currentInputFile = new File(outputDirectory, ".cur_input");
+		this.vizFile = new File(outputDirectory,"viz.csv");
+
+        // Delete everything that we may have created in a previous run.
+        // Trying to stay away from recursive delete of parent output directory in case there was a
+        // typo and that was not a directory we wanted to nuke.
+        // We also do not check if the deletes are actually successful.
+        statsFile.delete();
+        logFile.delete();
+		vizFile.delete();
+
+        for (File file : savedCorpusDirectory.listFiles()) {
+            file.delete();
+        }
+        for (File file : savedFailuresDirectory.listFiles()) {
+            file.delete();
+        }
+
+        appendLineToFile(statsFile,"# unix_time, cycles_done, cur_path, paths_total, pending_total, " +
+                "pending_favs, map_size, unique_crashes, unique_hangs, max_depth, execs_per_sec, valid_inputs, invalid_inputs, valid_cov");
+
+		appendLineToFile(this.vizFile,"execsPerSec saved_Inputs nonZeroCount nonZeroValidCount elapsedMilliseconds");
+
+    }
+
+
 
 	/* Returns the banner to be displayed on the status screen */
 	@Override
@@ -169,7 +218,7 @@ public class PestGuidance extends ZestGuidance {
 		
 				try {
 					List<String> csvline = new ArrayList<>();
-					FileWriter writer = new FileWriter("/zest-artifact/visualize.csv", true);
+					FileWriter writer = new FileWriter(this.vizFile, true);
 					csvline.add(String.valueOf(execsPerSec));
 					csvline.add(String.valueOf(savedInputs.size()));
 					csvline.add(String.valueOf(nonZeroCount));
