@@ -3,6 +3,9 @@
  */
 package edu.berkeley.cs.jqf.fuzz.ei;
 
+import java.io.FileWriter;
+import java.util.stream.Collectors;
+
 import com.pholser.junit.quickcheck.From;
 import edu.berkeley.cs.jqf.fuzz.guidance.GuidanceException;
 import edu.berkeley.cs.jqf.fuzz.guidance.Result;
@@ -28,6 +31,12 @@ public class PestGuidance extends ZestGuidance {
 
 	/** Minimal number of mutated children to produce per fuzzing cycle. */
 	protected final int NUM_CHILDREN_PER_CYCLE = 1000;
+
+
+	/**
+	* holds the last queue size
+	**/
+	protected int last_queue_size;
 
 	/**
 	 * Multiplication factor for number of children to produce for favored inputs.
@@ -124,6 +133,61 @@ public class PestGuidance extends ZestGuidance {
 		}
 		int totalCoverageCount = totalCoverage.getNonZeroCount();
 		infoLog("Total %d branches covered", totalCoverageCount);
+				statsPerCycle();
+			}
+		
+			private void statsPerCycle() {
+				Date now = new Date();
+		                long intervalMilliseconds = now.getTime() - lastRefreshTime.getTime();
+		                if (intervalMilliseconds < STATS_REFRESH_TIME_PERIOD) {
+		                        return;
+		                }
+		                long interlvalTrials = numTrials - lastNumTrials;
+		                long intervalExecsPerSec = interlvalTrials * 1000L / intervalMilliseconds;
+		                double intervalExecsPerSecDouble = interlvalTrials * 1000.0 / intervalMilliseconds;
+		                lastRefreshTime = now;
+		                lastNumTrials = numTrials;
+		                long elapsedMilliseconds = now.getTime() - startTime.getTime();
+		                long execsPerSec = numTrials * 1000L / elapsedMilliseconds;
+		
+		                String currentParentInputDesc;
+		                if (seedInputs.size() > 0 || savedInputs.isEmpty()) {
+		                        currentParentInputDesc = "<seed>";
+		                } else {
+		                        Input currentParentInput = savedInputs.get(currentParentInputIdx);
+		                        currentParentInputDesc = currentParentInputIdx + " ";
+		                        currentParentInputDesc += currentParentInput.isFavored() ? "(favored)" : "(not favored)";
+		                        currentParentInputDesc += " {" + numChildrenGeneratedForCurrentParentInput + "/"
+		                                        + getTargetChildrenForParent(currentParentInput) + " mutations}";
+		                }
+		
+		                int nonZeroCount = totalCoverage.getNonZeroCount();
+		                double nonZeroFraction = nonZeroCount * 100.0 / totalCoverage.size();
+		                int nonZeroValidCount = validCoverage.getNonZeroCount();
+		                double nonZeroValidFraction = nonZeroValidCount * 100.0 / validCoverage.size();
+		
+		
+				try {
+					List<String> csvline = new ArrayList<>();
+					FileWriter writer = new FileWriter("/zest-artifact/visualize.csv", true);
+					csvline.add(String.valueOf(execsPerSec));
+					csvline.add(String.valueOf(savedInputs.size()));
+					csvline.add(String.valueOf(nonZeroCount));
+					csvline.add(String.valueOf(nonZeroValidCount));
+					csvline.add(millisToDuration(elapsedMilliseconds));
+					csvline.add("\n");
+		
+					String finalline = csvline.stream().collect(Collectors.joining(","));
+					writer.write(finalline);
+					writer.close();
+				} catch (Exception e) {
+					System.out.println(e.toString());
+				}
+				String plotData = String.format("%d, %d, %d, %d, %d, %d, %.2f%%, %d, %d, %d, %.2f, %d, %d, %.2f%%",
+		                                TimeUnit.MILLISECONDS.toSeconds(now.getTime()), cyclesCompleted, currentParentInputIdx, numSavedInputs,
+		                                0, 0, nonZeroFraction, uniqueFailures.size(), 0, 0, intervalExecsPerSecDouble, numValid,
+		                                numTrials - numValid, nonZeroValidFraction);
+		                //appendLineToFile(statsFile, plotData);
 	}
 
 	// ########## Copied from ZestGuidance
