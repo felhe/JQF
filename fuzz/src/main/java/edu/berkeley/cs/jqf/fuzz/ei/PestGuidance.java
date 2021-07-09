@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit;
  * @author Felix Leonard Heitmann
  * @author Stephan Druskat
  * @author Peter Wegmann
+ * @author Lucas Yerinc
  */
 public class PestGuidance extends ZestGuidance {
 
@@ -355,7 +356,10 @@ public class PestGuidance extends ZestGuidance {
 			// if this input has no responsibilities left because of poor performance, remove it, then safe Inputs to disk
 			if (input.responsibilities.size() == 0) {
 				toRemove.add(input);
-			// TODO if already safed delete from harddrive 
+				// if already saved delete from disk
+				if(input.isSaved==true)	{
+					input.saveFile.deleteOnExit();
+				}
 			}
             else {
                 if (!input.isSaved) {
