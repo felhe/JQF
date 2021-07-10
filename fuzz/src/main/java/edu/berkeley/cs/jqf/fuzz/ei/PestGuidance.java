@@ -3,13 +3,16 @@
  */
 package edu.berkeley.cs.jqf.fuzz.ei;
 
+import java.io.FileWriter;
+import java.util.stream.Collectors;
+
+import com.pholser.junit.quickcheck.From;
 import edu.berkeley.cs.jqf.fuzz.guidance.GuidanceException;
 import edu.berkeley.cs.jqf.fuzz.guidance.Result;
 import edu.berkeley.cs.jqf.fuzz.util.Coverage;
+import edu.berkeley.cs.jqf.fuzz.util.IOUtils;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintStream;
+import java.io.*;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,6 +29,7 @@ import java.util.concurrent.TimeUnit;
  * @author Felix Leonard Heitmann
  * @author Stephan Druskat {@literal <mail@sdruskat.net>}
  * @author Peter Wegmann
+ * @author Lucas Yerinc
  */
 public class PestGuidance extends ZestGuidance {
 
@@ -34,6 +38,16 @@ public class PestGuidance extends ZestGuidance {
 
 	/** Minimal number of mutated children to produce per fuzzing cycle. */
 	protected final int NUM_CHILDREN_PER_CYCLE = 1000;
+
+
+	/**
+	* holds the last queue size
+	**/
+	protected int last_queue_size;
+
+	/** The file where Visualize data is written. (after every completed Cycle) */
+	protected File vizFile;
+
 
 	/**
 	 * Multiplication factor for number of children to produce for favored inputs.
@@ -86,6 +100,49 @@ public class PestGuidance extends ZestGuidance {
 		this.currentParentInputIdx = -1;
 	}
 
+
+
+	@Override
+    protected void prepareOutputDirectory() throws IOException {
+        // Create the output directory if it does not exist
+        IOUtils.createDirectory(outputDirectory);
+
+        // Name files and directories after AFL
+        this.savedCorpusDirectory = IOUtils.createDirectory(outputDirectory, "corpus");
+        this.savedFailuresDirectory = IOUtils.createDirectory(outputDirectory, "failures");
+        if (LOG_ALL_INPUTS) {
+            this.allInputsDirectory = IOUtils.createDirectory(outputDirectory, "all");
+            IOUtils.createDirectory(allInputsDirectory, "success");
+            IOUtils.createDirectory(allInputsDirectory, "invalid");
+            IOUtils.createDirectory(allInputsDirectory, "failure");
+        }
+        this.statsFile = new File(outputDirectory, "plot_data");
+        this.logFile = new File(outputDirectory, "fuzz.log");
+        this.currentInputFile = new File(outputDirectory, ".cur_input");
+		this.vizFile = new File(outputDirectory,"viz.csv");
+
+        // Delete everything that we may have created in a previous run.
+        // Trying to stay away from recursive delete of parent output directory in case there was a
+        // typo and that was not a directory we wanted to nuke.
+        // We also do not check if the deletes are actually successful.
+        statsFile.delete();
+        logFile.delete();
+		vizFile.delete();
+
+        for (File file : savedCorpusDirectory.listFiles()) {
+            file.delete();
+        }
+        for (File file : savedFailuresDirectory.listFiles()) {
+            file.delete();
+        }
+
+        appendLineToFile(statsFile,"# unix_time, cycles_done, cur_path, paths_total, pending_total, " +
+                "pending_favs, map_size, unique_crashes, unique_hangs, max_depth, execs_per_sec, valid_inputs, invalid_inputs, valid_cov");
+
+		appendLineToFile(this.vizFile,"execsPerSec saved_Inputs nonZeroCount nonZeroValidCount elapsedMilliseconds");
+
+    }
+
 	/* Returns the banner to be displayed on the status screen */
 	@Override
 	protected String getTitle() {
@@ -130,6 +187,61 @@ public class PestGuidance extends ZestGuidance {
 		}
 		int totalCoverageCount = totalCoverage.getNonZeroCount();
 		infoLog("Total %d branches covered", totalCoverageCount);
+				statsPerCycle();
+			}
+		
+			private void statsPerCycle() {
+				Date now = new Date();
+		                long intervalMilliseconds = now.getTime() - lastRefreshTime.getTime();
+		                if (intervalMilliseconds < STATS_REFRESH_TIME_PERIOD) {
+		                        return;
+		                }
+		                long interlvalTrials = numTrials - lastNumTrials;
+		                long intervalExecsPerSec = interlvalTrials * 1000L / intervalMilliseconds;
+		                double intervalExecsPerSecDouble = interlvalTrials * 1000.0 / intervalMilliseconds;
+		                lastRefreshTime = now;
+		                lastNumTrials = numTrials;
+		                long elapsedMilliseconds = now.getTime() - startTime.getTime();
+		                long execsPerSec = numTrials * 1000L / elapsedMilliseconds;
+		
+		                String currentParentInputDesc;
+		                if (seedInputs.size() > 0 || savedInputs.isEmpty()) {
+		                        currentParentInputDesc = "<seed>";
+		                } else {
+		                        Input<?> currentParentInput = savedInputs.get(currentParentInputIdx);
+		                        currentParentInputDesc = currentParentInputIdx + " ";
+		                        currentParentInputDesc += currentParentInput.isFavored() ? "(favored)" : "(not favored)";
+		                        currentParentInputDesc += " {" + numChildrenGeneratedForCurrentParentInput + "/"
+		                                        + getTargetChildrenForParent(currentParentInput) + " mutations}";
+		                }
+		
+		                int nonZeroCount = totalCoverage.getNonZeroCount();
+		                double nonZeroFraction = nonZeroCount * 100.0 / totalCoverage.size();
+		                int nonZeroValidCount = validCoverage.getNonZeroCount();
+		                double nonZeroValidFraction = nonZeroValidCount * 100.0 / validCoverage.size();
+		
+		
+				try {
+					List<String> csvline = new ArrayList<>();
+					FileWriter writer = new FileWriter(this.vizFile, true);
+					csvline.add(String.valueOf(execsPerSec));
+					csvline.add(String.valueOf(savedInputs.size()));
+					csvline.add(String.valueOf(nonZeroCount));
+					csvline.add(String.valueOf(nonZeroValidCount));
+					csvline.add(millisToDuration(elapsedMilliseconds));
+					csvline.add("\n");
+		
+					String finalline = csvline.stream().collect(Collectors.joining(","));
+					writer.write(finalline);
+					writer.close();
+				} catch (Exception e) {
+					System.out.println(e.toString());
+				}
+				String plotData = String.format("%d, %d, %d, %d, %d, %d, %.2f%%, %d, %d, %d, %.2f, %d, %d, %.2f%%",
+		                                TimeUnit.MILLISECONDS.toSeconds(now.getTime()), cyclesCompleted, currentParentInputIdx, numSavedInputs,
+		                                0, 0, nonZeroFraction, uniqueFailures.size(), 0, 0, intervalExecsPerSecDouble, numValid,
+		                                numTrials - numValid, nonZeroValidFraction);
+		                //appendLineToFile(statsFile, plotData);
 	}
 
 	// ########## Copied from ZestGuidance
@@ -244,10 +356,27 @@ public class PestGuidance extends ZestGuidance {
 					}
 				}
 			}
-			// if this input has no responsibilities left because of poor performance, remove it
+			// if this input has no responsibilities left because of poor performance, remove it, then save Inputs to disk
 			if (input.responsibilities.size() == 0) {
 				toRemove.add(input);
+				// if already saved delete from disk
+				if(input.isSaved==true)	{
+					input.saveFile.deleteOnExit();
+				}
 			}
+            else {
+                if (!input.isSaved) {
+                	try {
+						writeInputToFile((Input<Integer>) input);
+						input.isSaved=true;
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+					String how = input.desc;
+					String why = input.why;
+					infoLog("Saved - %s %s %s", input.saveFile.getPath(), how, why);		
+                }
+            }
 		}
 
 		// save remaining inputs for fuzzing and clear list for new cycle
@@ -353,7 +482,7 @@ public class PestGuidance extends ZestGuidance {
 					}
 
 					infoLog("Saving new input (at run %d): " + "input #%d " + "of size %d; " + "total coverage = %d",
-							numTrials, savedInputs.size(), currentInput.size(), nonZeroAfter);
+							numTrials, numSavedInputs, currentInput.size(), nonZeroAfter);
 
 					// Save input to queue and to disk
 					final String reason = why;
@@ -415,16 +544,72 @@ public class PestGuidance extends ZestGuidance {
 		});
 	}
 
+	// Compute a set of branches for which the current input may assume
+	// responsibility
+	// ##### Copied from ZestGuidance,
+	// changed check against thrashing
+	protected Set<Object> computeResponsibilities(boolean valid) {
+		Set<Object> result = new HashSet<>();
+
+		// This input is responsible for all new coverage
+		Collection<?> newCoverage = runCoverage.computeNewCoverage(totalCoverage);
+		if (newCoverage.size() > 0) {
+			result.addAll(newCoverage);
+		}
+
+		// If valid, this input is responsible for all new valid coverage
+		if (valid) {
+			Collection<?> newValidCoverage = runCoverage.computeNewCoverage(validCoverage);
+			if (newValidCoverage.size() > 0) {
+				result.addAll(newValidCoverage);
+			}
+		}
+
+		// Perhaps it can also steal responsibility from other inputs
+		if (STEAL_RESPONSIBILITY) {
+			int currentNonZeroCoverage = runCoverage.getNonZeroCount();
+			int currentInputSize = currentInput.size();
+			Set<?> covered = new HashSet<>(runCoverage.getCovered());
+
+			// Search for a candidate to steal responsibility from
+			candidate_search: for (Input candidate : savedInputs) {
+				Set<?> responsibilities = candidate.responsibilities;
+
+				// Candidates with no responsibility are not interesting
+				if (responsibilities.isEmpty()) {
+					continue candidate_search;
+				}
+
+				// To avoid thrashing, only consider candidates with either
+				// strictly smaller total coverage
+				if (candidate.nonZeroCoverage <= currentNonZeroCoverage) {
+
+					// Check if we can steal all responsibilities from candidate
+					for (Object b : responsibilities) {
+						if (covered.contains(b) == false) {
+							// Cannot steal if this input does not cover something
+							// that the candidate is responsible for
+							continue candidate_search;
+						}
+					}
+					// If all of candidate's responsibilities are covered by the
+					// current input, then it can completely subsume the candidate
+					result.addAll(responsibilities);
+				}
+
+			}
+		}
+		return result;
+	}
+	
 	/* Saves an interesting input to the queue. */
     protected void saveCurrentInput(Set<Object> responsibilities, String why) throws IOException {
 
-        // First, save to disk (note: we issue IDs to everyone, but only write to disk  if valid)
+        // First, add to a list of SaveFiles then add it to Harddrive in Completecycle
         int newInputIdx = numSavedInputs++;
         String saveFileName = String.format("id_%06d", newInputIdx);
-        String how = currentInput.desc;
         File saveFile = new File(savedCorpusDirectory, saveFileName);
-        writeCurrentInputToFile(saveFile);
-        infoLog("Saved - %s %s %s", saveFile.getPath(), how, why);
+		currentInput.why = why;
 
         // If not using guidance, do nothing else
         if (blind) {
@@ -450,5 +635,15 @@ public class PestGuidance extends ZestGuidance {
         // Fourth, neglect resonsibilities
         currentInput.responsibilities = new HashSet<>();
     }
+
+	protected void writeInputToFile(Input<Integer> inputToSave) throws IOException {
+		File saveFile = inputToSave.saveFile;
+		try (BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(saveFile))) {
+			for (Integer b : inputToSave) {
+				assert (b >= 0 && b < 256);
+				out.write(b);
+			}
+		}
+	}
 
 }

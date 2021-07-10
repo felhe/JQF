@@ -374,7 +374,7 @@ public class ZestGuidance implements Guidance {
         this(testName, duration, null, outputDirectory, seedFiles, new Random());
     }
 
-    private void prepareOutputDirectory() throws IOException {
+    protected void prepareOutputDirectory() throws IOException {
         // Create the output directory if it does not exist
         IOUtils.createDirectory(outputDirectory);
 
@@ -1055,6 +1055,22 @@ public class ZestGuidance implements Guidance {
          * operations.</p>
          */
         String desc;
+        
+        /**
+         * The description for this input.
+         *
+         * <p>This field is modified by the construction and mutation
+         * operations.</p>
+         */
+        String why;
+        
+        /**
+         * A boolean that states if a input is saved
+         *
+         * <p>This field is modified by the construction and mutation
+         * operations.</p>
+         */
+        boolean isSaved;
 
         /**
          * The run coverage for this input, if the input is saved.
