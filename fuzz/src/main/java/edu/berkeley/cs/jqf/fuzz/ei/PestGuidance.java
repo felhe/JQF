@@ -158,7 +158,7 @@ public class PestGuidance extends ZestGuidance {
 		// We like inputs that cover many things, so scale with fraction of max
 		// that counts responsibilities
 		if (maxCoverage > 0) {
-			target += (NUM_CHILDREN_MULTIPLIER_FAVORED * parentInput.nonZeroCoverage) / maxCoverage;
+			target += (NUM_CHILDREN_MULTIPLIER_FAVORED * parentInput.responsibilities.size()) / maxCoverage;
 		}
 
 		return target;

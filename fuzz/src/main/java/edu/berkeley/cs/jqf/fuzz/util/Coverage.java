@@ -196,17 +196,17 @@ public class Coverage implements TraceEventVisitor {
         if (that.counter.hasNonZeros()) {
             Collection<Integer> nonZeroIndices = that.counter.getNonZeroIndices();
             for (int idx : nonZeroIndices) {
-                int before = hob(this.counter.getAtIndex(idx));
-                int after = hob(that.counter.getAtIndex(idx));
+                int before = this.counter.getAtIndex(idx);
+                int after = that.counter.getAtIndex(idx);
                 // check if we hit new branches
                 if (before == 0) {
                     this.counter.setAtIndex(idx, after);
                     coverageIncreased = true;
                 }
                 // check if we increased the hit count of a branch (= slowed down)
-                if (before > 1 && before + 16 < after) {
-                    slowed = true;
-                }
+//                if (before > 1 && before + 16 < after) {
+//                    slowed = true;
+//                }
                 // check if we decreased the hit count (= sped up)
                 if (before > after && after >= 1) {
                     this.counter.setAtIndex(idx, after);
