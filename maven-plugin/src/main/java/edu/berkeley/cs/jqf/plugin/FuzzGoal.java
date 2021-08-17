@@ -152,7 +152,7 @@ public class FuzzGoal extends AbstractMojo {
     /**
      * The fuzzing engine.
      *
-     * <p>One of 'zest' and 'zeal'. Default is 'zest'.</p>
+     * <p>One of 'zest', 'zeal' and 'pest'. Default is 'zest'.</p>
      */
     @Parameter(property="engine", defaultValue="zest")
     private String engine;
