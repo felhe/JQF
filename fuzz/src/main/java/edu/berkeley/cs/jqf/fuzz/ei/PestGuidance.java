@@ -180,6 +180,7 @@ public class PestGuidance extends ZestGuidance {
 	}
 
 	private void purgeQueue() {
+		infoLog("Purging input queue.");
 		// sort input by performance
 		savedInputs.sort((first, second) -> {
 			if (first.valid && !second.valid)
@@ -197,10 +198,6 @@ public class PestGuidance extends ZestGuidance {
 						Input<?> oldResponsible = responsibleInputs.get(b);
 						if (oldResponsible != null) {
 							oldResponsible.responsibilities.remove(b);
-							// infoLog("-- Stealing responsibility for %s from input %d", b,
-							// oldResponsible.id);
-						} else {
-							// infoLog("-- Assuming new responsibility for %s", b);
 						}
 						// We are now responsible
 						responsibleInputs.put(b, input);

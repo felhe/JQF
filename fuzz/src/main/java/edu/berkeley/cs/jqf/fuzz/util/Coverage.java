@@ -132,6 +132,12 @@ public class Coverage implements TraceEventVisitor {
         return newCoverage;
     }
 
+    /**
+     * Calculates a performance score for inputs based
+     * on number of times a code location has been hit.
+     * 
+     * @author Felix Leonard Heitmann
+     */
     public void calculatePerformanceScore() {
         int hitCountSum = 0;
         for (int idx : this.counter.getNonZeroIndices()) {
