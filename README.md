@@ -1,4 +1,5 @@
 # JQF + Zest: Semantic Fuzzing for Java
+[![Build](https://github.com/rohanpadhye/JQF/actions/workflows/ci.yml/badge.svg)](https://github.com/rohanpadhye/JQF/actions/workflows/ci.yml)
 
 [ISSTA'19 paper]: https://rohan.padhye.org/files/zest-issta19.pdf
 [ISSTA'18 paper]: https://rohan.padhye.org/files/perffuzz-issta18.pdf
@@ -102,7 +103,7 @@ The [JQF wiki](https://github.com/rohanpadhye/jqf/wiki) contains lots more docum
 - [Using a custom fuzz guidance](https://github.com/rohanpadhye/jqf/wiki/The-Guidance-interface)
 - [Performance Benchmarks](https://github.com/rohanpadhye/jqf/wiki/Performance-benchmarks)
 
-JQF also publishes its [API docs](https://rohanpadhye.github.io/jqf/apidocs).
+JQF also publishes its [API docs](https://rohanpadhye.github.io/JQF/apidocs).
 
 ## Applications based on JQF
 
