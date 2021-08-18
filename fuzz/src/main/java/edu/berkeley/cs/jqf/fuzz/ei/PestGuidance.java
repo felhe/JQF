@@ -17,7 +17,6 @@ import java.util.concurrent.TimeUnit;
 
 import com.pholser.junit.quickcheck.From;
 
-import edu.berkeley.cs.jqf.fuzz.ei.ZestGuidance.Input;
 import edu.berkeley.cs.jqf.fuzz.guidance.GuidanceException;
 import edu.berkeley.cs.jqf.fuzz.guidance.Result;
 import edu.berkeley.cs.jqf.fuzz.util.Coverage;
