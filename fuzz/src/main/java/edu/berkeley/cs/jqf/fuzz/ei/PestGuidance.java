@@ -90,7 +90,7 @@ public class PestGuidance extends ZestGuidance {
 		}
 	}
 
-	private int getTargetChildrenForParent(Input parentInput) {
+	private int getTargetChildrenForParent(Input<?> parentInput) {
 		// Baseline is a constant
 		int target = NUM_CHILDREN_BASELINE;
 
@@ -132,7 +132,7 @@ public class PestGuidance extends ZestGuidance {
 		if (seedInputs.size() > 0 || savedInputs.isEmpty()) {
 			currentParentInputDesc = "<seed>";
 		} else {
-			Input currentParentInput = savedInputs.get(currentParentInputIdx);
+			Input<?> currentParentInput = savedInputs.get(currentParentInputIdx);
 			currentParentInputDesc = currentParentInputIdx + " ";
 			currentParentInputDesc += currentParentInput.isFavored() ? "(favored)" : "(not favored)";
 			currentParentInputDesc += " {" + numChildrenGeneratedForCurrentParentInput + "/"
@@ -192,12 +192,12 @@ public class PestGuidance extends ZestGuidance {
 			return first.coverage.performanceScore - second.coverage.performanceScore;
 		});
 		Collection<Integer> coveredBranches = new ArrayList<Integer>(totalCoverage.getCovered());
-		ArrayList<Input> toRemove = new ArrayList<>();
-		for (Input input : savedInputs) {
+		ArrayList<Input<?>> toRemove = new ArrayList<>();
+		for (Input<?> input : savedInputs) {
 			if (!coveredBranches.isEmpty()) {
 				for (Integer b : input.coverage.getCovered()) {
 					if (coveredBranches.contains(b)) {
-						Input oldResponsible = responsibleInputs.get(b);
+						Input<?> oldResponsible = responsibleInputs.get(b);
 						if (oldResponsible != null) {
 							oldResponsible.responsibilities.remove(b);
 							// infoLog("-- Stealing responsibility for %s from input %d", b,
@@ -415,7 +415,7 @@ public class PestGuidance extends ZestGuidance {
 			Set<?> covered = new HashSet<>(runCoverage.getCovered());
 
 			// Search for a candidate to steal responsibility from
-			candidate_search: for (Input candidate : savedInputs) {
+			candidate_search: for (Input<?> candidate : savedInputs) {
 				Set<?> responsibilities = candidate.responsibilities;
 
 				// Candidates with no responsibility are not interesting
