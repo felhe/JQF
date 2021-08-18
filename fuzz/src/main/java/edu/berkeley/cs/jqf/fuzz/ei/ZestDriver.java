@@ -62,14 +62,14 @@ public class ZestDriver {
         try {
             // Load the guidance
             String title = testClassName+"#"+testMethodName;
-            PestGuidance guidance = null;
+            ZestGuidance guidance = null;
 
             if (seedFiles == null) {
-                guidance = new PestGuidance(title, null, outputDirectory);
+                guidance = new ZestGuidance(title, null, outputDirectory);
             } else if (seedFiles.length == 1 && seedFiles[0].isDirectory()) {
-                guidance = new PestGuidance(title, null, outputDirectory, seedFiles[0]);
+                guidance = new ZestGuidance(title, null, outputDirectory, seedFiles[0]);
             } else {
-                guidance = new PestGuidance(title, null, outputDirectory, seedFiles);
+                guidance = new ZestGuidance(title, null, outputDirectory, seedFiles);
             }
 
 
