@@ -386,65 +386,6 @@ public class PestGuidance extends ZestGuidance {
 		});
 	}
 
-	// Compute a set of branches for which the current input may assume
-	// responsibility
-	// ##### Copied from ZestGuidance,
-	// changed check against thrashing
-	private Set<Object> computeResponsibilities(boolean valid) {
-		Set<Object> result = new HashSet<>();
-
-		// This input is responsible for all new coverage
-		Collection<?> newCoverage = runCoverage.computeNewCoverage(totalCoverage);
-		if (newCoverage.size() > 0) {
-			result.addAll(newCoverage);
-		}
-
-		// If valid, this input is responsible for all new valid coverage
-		if (valid) {
-			Collection<?> newValidCoverage = runCoverage.computeNewCoverage(validCoverage);
-			if (newValidCoverage.size() > 0) {
-				result.addAll(newValidCoverage);
-			}
-		}
-
-		// Perhaps it can also steal responsibility from other inputs
-		if (STEAL_RESPONSIBILITY) {
-			int currentNonZeroCoverage = runCoverage.getNonZeroCount();
-			int currentInputSize = currentInput.size();
-			Set<?> covered = new HashSet<>(runCoverage.getCovered());
-
-			// Search for a candidate to steal responsibility from
-			candidate_search: for (Input<?> candidate : savedInputs) {
-				Set<?> responsibilities = candidate.responsibilities;
-
-				// Candidates with no responsibility are not interesting
-				if (responsibilities.isEmpty()) {
-					continue candidate_search;
-				}
-
-				// To avoid thrashing, only consider candidates with either
-				// strictly smaller total coverage
-				if (candidate.nonZeroCoverage <= currentNonZeroCoverage) {
-
-					// Check if we can steal all responsibilities from candidate
-					for (Object b : responsibilities) {
-						if (covered.contains(b) == false) {
-							// Cannot steal if this input does not cover something
-							// that the candidate is responsible for
-							continue candidate_search;
-						}
-					}
-					// If all of candidate's responsibilities are covered by the
-					// current input, then it can completely subsume the candidate
-					result.addAll(responsibilities);
-				}
-
-			}
-		}
-
-		return result;
-	}
-	
 	/* Saves an interesting input to the queue. */
     protected void saveCurrentInput(Set<Object> responsibilities, String why) throws IOException {
 
