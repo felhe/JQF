@@ -15,8 +15,6 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import com.pholser.junit.quickcheck.From;
-
 import edu.berkeley.cs.jqf.fuzz.guidance.GuidanceException;
 import edu.berkeley.cs.jqf.fuzz.guidance.Result;
 import edu.berkeley.cs.jqf.fuzz.util.Coverage;
@@ -26,7 +24,7 @@ import edu.berkeley.cs.jqf.fuzz.util.Coverage;
  * for all inputs and one for valid inputs only, that perform well.
  * 
  * @author Felix Leonard Heitmann
- * @author Stephan Druskat
+ * @author Stephan Druskat {@literal <mail@sdruskat.net>}
  * @author Peter Wegmann
  */
 public class PestGuidance extends ZestGuidance {
@@ -237,12 +235,21 @@ public class PestGuidance extends ZestGuidance {
 	}
 
 	/**
-	 * Overrides result-handling from {@link ZestGuidance} in that responsibilities
-	 * are simply reset on success, and a performance score calculated.
+	 * Overrides result-handling from {@link ZestGuidance} 
+	 * to achieve better performance:
 	 * 
-	 * Also introduces the custom flag `+reduce`.
+	 * <p>
+	 * <ul>
+	 * <li>responsibilities are reset on success,</li>
+	 * <li>a performance score is calculated to 
+	 * be reused in the selection of next generation inputs,</li>
+	 * <li>introduces the custom flag `+reduce`</li>
+	 * </ul>
+	 * </p>
 	 * 
-	 * Mostly copied {@link From} {@link ZestGuidance}.
+	 * <p>
+	 * Mostly copied from {@link ZestGuidance}.
+	 * </p>
 	 */
 	@Override
 	public void handleResult(Result result, Throwable error) throws GuidanceException {
@@ -267,7 +274,6 @@ public class PestGuidance extends ZestGuidance {
 				int validNonZeroBefore = validCoverage.getNonZeroCount();
 
 				// Reset responsibilities and calculate performance score
-				// @author
 				Set<Object> responsibilities = new HashSet<>();
 				runCoverage.calculatePerformanceScore();
 

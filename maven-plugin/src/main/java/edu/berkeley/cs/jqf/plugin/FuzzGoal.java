@@ -66,7 +66,7 @@ import static edu.berkeley.cs.jqf.instrument.InstrumentingClassLoader.stringsToU
  * using a provided entry point.</p>
  *
  * @author Rohan Padhye
- * @author Stephan Druskat
+ * @author Stephan Druskat {@literal <mail@sdruskat.net>}
  */
 @Mojo(name="fuzz",
         requiresDependencyResolution= ResolutionScope.TEST,
