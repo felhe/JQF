@@ -146,22 +146,6 @@ public class PestGuidance extends ZestGuidance {
 			console.printf("Removed %s subsumed inputs with poor performance\n", toRemove.size());
 	}
 
-	// ########## Copied from ZestGuidance
-	private String millisToDuration(long millis) {
-		long seconds = TimeUnit.MILLISECONDS.toSeconds(millis % TimeUnit.MINUTES.toMillis(1));
-		long minutes = TimeUnit.MILLISECONDS.toMinutes(millis % TimeUnit.HOURS.toMillis(1));
-		long hours = TimeUnit.MILLISECONDS.toHours(millis);
-		String result = "";
-		if (hours > 0) {
-			result = hours + "h ";
-		}
-		if (hours > 0 || minutes > 0) {
-			result += minutes + "m ";
-		}
-		result += seconds + "s";
-		return result;
-	}
-
 	/**
 	 * Overrides result-handling from {@link ZestGuidance} 
 	 * to achieve better performance:
