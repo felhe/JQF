@@ -1096,6 +1096,11 @@ public class ZestGuidance implements Guidance {
         Set<Object> responsibilities = null;
 
         /**
+         * Whether this input resulted in a valid run.
+         */
+        boolean valid = false;
+
+        /**
          * Create an empty input.
          */
         public Input() {
