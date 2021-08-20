@@ -109,10 +109,10 @@ public class ZestGuidance implements Guidance {
     protected File allInputsDirectory;
 
     /** Set of saved inputs to fuzz. */
-    protected ArrayList<Input> savedInputs = new ArrayList<>();
+    protected ArrayList<Input<?>> savedInputs = new ArrayList<>();
 
     /** Queue of seeds to fuzz. */
-    protected Deque<Input> seedInputs = new ArrayDeque<>();
+    protected Deque<Input<?>> seedInputs = new ArrayDeque<>();
 
     /** Current input that's running -- valid after getInput() and before handleResult(). */
     protected Input<?> currentInput;
@@ -155,7 +155,7 @@ public class ZestGuidance implements Guidance {
     protected int maxCoverage = 0;
 
     /** A mapping of coverage keys to inputs that are responsible for them. */
-    protected Map<Object, Input> responsibleInputs = new HashMap<>(totalCoverage.size());
+    protected Map<Object, Input<?>> responsibleInputs = new HashMap<>(totalCoverage.size());
 
     /** The set of unique failures found so far. */
     protected Set<List<StackTraceElement>> uniqueFailures = new HashSet<>();
@@ -471,7 +471,7 @@ public class ZestGuidance implements Guidance {
         if (seedInputs.size() > 0 || savedInputs.isEmpty()) {
             currentParentInputDesc = "<seed>";
         } else {
-            Input currentParentInput = savedInputs.get(currentParentInputIdx);
+            Input<?> currentParentInput = savedInputs.get(currentParentInputIdx);
             currentParentInputDesc = currentParentInputIdx + " ";
             currentParentInputDesc += currentParentInput.isFavored() ? "(favored)" : "(not favored)";
             currentParentInputDesc += " {" + numChildrenGeneratedForCurrentParentInput +
@@ -544,7 +544,7 @@ public class ZestGuidance implements Guidance {
         this.blind = blind;
     }
 
-    protected int getTargetChildrenForParent(Input parentInput) {
+    protected int getTargetChildrenForParent(Input<?> parentInput) {
         // Baseline is a constant
         int target = NUM_CHILDREN_BASELINE;
 
@@ -571,7 +571,7 @@ public class ZestGuidance implements Guidance {
         infoLog("Here is a list of favored inputs:");
         int sumResponsibilities = 0;
         numFavoredLastCycle = 0;
-        for (Input input : savedInputs) {
+        for (Input<?> input : savedInputs) {
             if (input.isFavored()) {
                 int responsibleFor = input.responsibilities.size();
                 infoLog("Input %d is responsible for %d branches", input.id, responsibleFor);
@@ -655,7 +655,7 @@ public class ZestGuidance implements Guidance {
             } else {
                 // The number of children to produce is determined by how much of the coverage
                 // pool this parent input hits
-                Input currentParentInput = savedInputs.get(currentParentInputIdx);
+                Input<?> currentParentInput = savedInputs.get(currentParentInputIdx);
                 int targetNumChildren = getTargetChildrenForParent(currentParentInput);
                 if (numChildrenGeneratedForCurrentParentInput >= targetNumChildren) {
                     // Select the next saved input to fuzz
@@ -668,7 +668,7 @@ public class ZestGuidance implements Guidance {
 
                     numChildrenGeneratedForCurrentParentInput = 0;
                 }
-                Input parent = savedInputs.get(currentParentInputIdx);
+                Input<?> parent = savedInputs.get(currentParentInputIdx);
 
                 // Fuzz it to get a new input
                 // infoLog("Mutating input: %s", parent.desc);
@@ -887,7 +887,7 @@ public class ZestGuidance implements Guidance {
 
             // Search for a candidate to steal responsibility from
             candidate_search:
-            for (Input candidate : savedInputs) {
+            for (Input<?> candidate : savedInputs) {
                 Set<?> responsibilities = candidate.responsibilities;
 
                 // Candidates with no responsibility are not interesting
@@ -963,7 +963,7 @@ public class ZestGuidance implements Guidance {
         for (Object b : responsibilities) {
             // If there is an old input that is responsible,
             // subsume it
-            Input oldResponsible = responsibleInputs.get(b);
+            Input<?> oldResponsible = responsibleInputs.get(b);
             if (oldResponsible != null) {
                 oldResponsible.responsibilities.remove(b);
                 // infoLog("-- Stealing responsibility for %s from input %d", b, oldResponsible.id);
@@ -1112,13 +1112,13 @@ public class ZestGuidance implements Guidance {
          *
          * @param toClone the input map to clone
          */
-        public Input(Input toClone) {
+        public Input(Input<?> toClone) {
             desc = String.format("src:%06d", toClone.id);
         }
 
         public abstract int getOrGenerateFresh(K key, Random random);
         public abstract int size();
-        public abstract Input fuzz(Random random);
+        public abstract Input<?> fuzz(Random random);
         public abstract void gc();
 
         /**
@@ -1227,7 +1227,7 @@ public class ZestGuidance implements Guidance {
         }
 
         @Override
-        public Input fuzz(Random random) {
+        public Input<?> fuzz(Random random) {
             // Clone this input to create initial version of new child
             LinearInput newInput = new LinearInput(this);
 

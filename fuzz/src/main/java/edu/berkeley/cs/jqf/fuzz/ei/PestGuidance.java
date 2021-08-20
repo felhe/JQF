@@ -85,7 +85,7 @@ public class PestGuidance extends ZestGuidance {
 	}
 
 	@Override
-	protected int getTargetChildrenForParent(Input parentInput) {
+	protected int getTargetChildrenForParent(Input<?> parentInput) {
 		// Baseline is a constant
 		int target = NUM_CHILDREN_BASELINE;
 
