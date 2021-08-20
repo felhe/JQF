@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Random;
 
 import edu.berkeley.cs.jqf.fuzz.ei.ExecutionIndexingGuidance;
+import edu.berkeley.cs.jqf.fuzz.ei.PestGuidance;
 import edu.berkeley.cs.jqf.fuzz.ei.ZestGuidance;
 import edu.berkeley.cs.jqf.fuzz.guidance.GuidanceException;
 import edu.berkeley.cs.jqf.fuzz.junit.GuidedFuzzing;
@@ -66,6 +67,7 @@ import static edu.berkeley.cs.jqf.instrument.InstrumentingClassLoader.stringsToU
  * using a provided entry point.</p>
  *
  * @author Rohan Padhye
+ * @author Stephan Druskat {@literal <mail@sdruskat.net>}
  */
 @Mojo(name="fuzz",
         requiresDependencyResolution= ResolutionScope.TEST,
@@ -182,7 +184,7 @@ public class FuzzGoal extends AbstractMojo {
     /**
      * The fuzzing engine.
      *
-     * <p>One of 'zest' and 'zeal'. Default is 'zest'.</p>
+     * <p>One of 'zest', 'zeal' and 'pest'. Default is 'zest'.</p>
      */
     @Parameter(property="engine", defaultValue="zest")
     private String engine;
@@ -365,6 +367,9 @@ public class FuzzGoal extends AbstractMojo {
                     System.setProperty("jqf.tracing.TRACE_GENERATORS", "true");
                     System.setProperty("jqf.tracing.MATCH_CALLEE_NAMES", "true");
                     guidance = new ExecutionIndexingGuidance(targetName, duration, trials, resultsDir, seedsDir, rnd);
+                    break;
+                case "pest":
+                    guidance = new PestGuidance(targetName, duration, resultsDir, seedsDir);
                     break;
                 default:
                     throw new MojoExecutionException("Unknown fuzzing engine: " + engine);

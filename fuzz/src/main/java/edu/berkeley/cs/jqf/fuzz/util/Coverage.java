@@ -31,8 +31,8 @@ package edu.berkeley.cs.jqf.fuzz.util;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.stream.Collectors;
-
+import java.util.HashMap;
+import java.util.Map;
 import edu.berkeley.cs.jqf.instrument.tracing.events.BranchEvent;
 import edu.berkeley.cs.jqf.instrument.tracing.events.CallEvent;
 import edu.berkeley.cs.jqf.instrument.tracing.events.TraceEvent;
@@ -51,6 +51,8 @@ public class Coverage implements TraceEventVisitor {
     /** The coverage counts for each edge. */
     private final Counter counter = new NonZeroCachingCounter(COVERAGE_MAP_SIZE);
 
+    public int performanceScore = 0;
+
     /** Creates a new coverage map. */
     public Coverage() {
 
@@ -65,6 +67,7 @@ public class Coverage implements TraceEventVisitor {
         for (int idx = 0; idx < COVERAGE_MAP_SIZE; idx++) {
             this.counter.setAtIndex(idx, that.counter.getAtIndex(idx));
         }
+        this.performanceScore = that.performanceScore;
     }
 
     /**
@@ -130,7 +133,20 @@ public class Coverage implements TraceEventVisitor {
             }
         }
         return newCoverage;
+    }
 
+    /**
+     * Calculates a performance score for inputs based
+     * on number of times a code location has been hit.
+     * 
+     * @author Felix Leonard Heitmann
+     */
+    public void calculatePerformanceScore() {
+        int hitCountSum = 0;
+        for (int idx : this.counter.getNonZeroIndices()) {
+            hitCountSum += this.counter.getAtIndex(idx);
+        }
+        this.performanceScore = 100*hitCountSum / this.counter.getNonZeroSize();
     }
 
     /**
@@ -182,18 +198,40 @@ public class Coverage implements TraceEventVisitor {
      *         of <code>this</code>, causing <code>this</code> to change.
      */
     public boolean updateBits(Coverage that) {
-        boolean changed = false;
+        boolean coverageIncreased = false;
+        boolean slowed = false;
+        boolean reduced = false;
+        HashMap<Integer, Integer> oldValues = new HashMap<Integer, Integer>();
         if (that.counter.hasNonZeros()) {
-            for (int idx = 0; idx < COVERAGE_MAP_SIZE; idx++) {
-                int before = this.counter.getAtIndex(idx);
-                int after = before | hob(that.counter.getAtIndex(idx));
-                if (after != before) {
+            Collection<Integer> nonZeroIndices = that.counter.getNonZeroIndices();
+            for (int idx : nonZeroIndices) {
+                int before = hob(this.counter.getAtIndex(idx));
+                int after = hob(that.counter.getAtIndex(idx));
+                // check if we hit new branches
+                if (before == 0) {
                     this.counter.setAtIndex(idx, after);
-                    changed = true;
+                    coverageIncreased = true;
+                }
+                // check if we increased the hit count of a branch (= slowed down)
+                if (before > 1 && before + 16 < after) {
+                    slowed = true;
+                }
+                // check if we decreased the hit count (= sped up)
+                if (before > after && after >= 1) {
+                    this.counter.setAtIndex(idx, after);
+                    oldValues.put(idx, before);
+                    reduced = true;
                 }
             }
         }
-        return changed;
+        if (reduced && slowed) {
+            for (Map.Entry<Integer, Integer> entry : oldValues.entrySet()) {
+                this.counter.setAtIndex(entry.getKey(), entry.getValue());
+            }
+        }
+        // only save input if we either hit new branches
+        // or reduced the hit count without increasing it for another branch
+        return coverageIncreased || (reduced && !slowed);
     }
 
     /** Returns a hash code of the edge counts in the coverage map. */

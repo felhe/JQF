@@ -91,6 +91,7 @@ In the above example, the generators for `Map` and `String` were synthesized aut
 * [Fuzzing a compiler with Zest](https://github.com/rohanpadhye/jqf/wiki/Fuzzing-a-Compiler): A tutorial for fuzzing a non-trivial program -- the [Google Closure Compiler](https://github.com/google/closure-compiler) -- using a generator for JavaScript programs. This tutorial makes use of the [JQF Maven plugin](https://github.com/rohanpadhye/jqf/wiki/JQF-Maven-Plugin).
 * [Fuzzing with AFL](https://github.com/rohanpadhye/jqf/wiki/Fuzzing-with-AFL): A tutorial for fuzzing a Java program that parses binary data, such as PNG image files, using the AFL binary fuzzing engine.
 * [Fuzzing with ZestCLI](https://gitlab.com/gitlab-org/security-products/demos/coverage-fuzzing/java-fuzzing-example): A tutorial of fuzzing a Java program with ZestCLI 
+* [Fuzzing with Pest](https://github.com/felhe/JQF/wiki/Fuzzing-with-Pest): Tutorials for improving Zest's performance using the Pest fuzzing engine.
 
 ### Continuous Fuzzing
 
