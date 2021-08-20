@@ -38,7 +38,7 @@ if [ -n "$JAVA_HOME" ]; then
 else
     java="java"
 fi
-"$java" -da \
+"$java" -ea \
   -Xbootclasspath/a:"$INST_CLASSPATH" \
   ${JAVAAGENT} \
   -Djanala.conf="${SCRIPT_DIR}/janala.conf" \
