@@ -81,7 +81,6 @@ public class CoverageTest {
     }
 
     @Test
-    @Ignore
     public void testCoverageUpdateBits1() {
         Coverage c1 = new Coverage();
         Coverage c2 = new Coverage();
@@ -106,7 +105,6 @@ public class CoverageTest {
     }
 
     @Test
-    @Ignore
     public void testCoverageUpdateBits2() {
         Coverage c1 = new Coverage();
         Coverage c2 = new Coverage();
@@ -132,7 +130,6 @@ public class CoverageTest {
 
 
     @Test
-    @Ignore
     public void testCoverageUpdateBits3() {
         Coverage c1 = new Coverage();
         Coverage c2 = new Coverage();
@@ -159,7 +156,6 @@ public class CoverageTest {
 
 
     @Test
-    @Ignore
     public void testCoverageUpdateBits4() {
         Coverage c1 = new Coverage();
         Coverage c2 = new Coverage();
